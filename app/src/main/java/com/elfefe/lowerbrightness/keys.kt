@@ -1,0 +1,32 @@
+package com.elfefe.lowerbrightness
+
+object SharedPreferenceKeys {
+    const val APP_PREFS = "AppPrefs"
+    const val SCHEDULE_PREFS = "SchedulePrefs"
+
+    const val CURRENT_BRIGHTNESS = "CURRENT_BRIGHTNESS"
+    const val CURRENT_BRIGHTNESS_STEP = "CURRENT_BRIGHTNESS_STEP"
+    const val CURRENT_SCHEDULE = "CURRENT_SCHEDULE"
+}
+
+object ActionKeys {
+    const val TOGGLE_OVERLAY = "TOGGLE_OVERLAY"
+    const val ADJUST_BRIGHTNESS = "ADJUST_BRIGHTNESS"
+    const val ADJUST_BRIGHTNESS_STEP = "ADJUST_BRIGHTNESS_STEP"
+    const val REDUCE_BRIGHTNESS = "REDUCE_BRIGHTNESS"
+    const val INCREASE_BRIGHTNESS = "INCREASE_BRIGHTNESS"
+    const val ACTION_START_OVERLAY = "ACTION_START_OVERLAY"
+    const val ACTION_STOP_OVERLAY = "ACTION_STOP_OVERLAY"
+}
+
+object BroadcastKeys {
+    const val BROADCAST_BRIGHTNESS = "BROADCAST_BRIGHTNESS"
+    const val BROADCAST_OVERLAY_STATE = "CAST_OVERLAY_STATE"
+}
+
+object IntentKeys {
+    const val UPDATE_BRIGHTNESS = "UPDATE_BRIGHTNESS"
+    const val BRIGHTNESS_LEVEL = "BRIGHTNESS_LEVEL"
+    const val BRIGHTNESS_STEP = "BRIGHTNESS_STEP"
+    const val OVERLAY_STATE = "OVERLAY_STATE"
+}
