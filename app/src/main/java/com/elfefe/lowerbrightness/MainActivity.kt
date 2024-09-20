@@ -99,6 +99,7 @@ class MainActivity : ComponentActivity() {
         if (!Settings.canDrawOverlays(this))
             requestOverlayPermission.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
 
+        // TODO: Implement Alarm System
 //        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && hasExactAlarmPermission()) {
 //            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
 //            startActivity(intent)

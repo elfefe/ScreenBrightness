@@ -52,6 +52,7 @@ class OverlayService : Service() {
                 ActionKeys.ADJUST_BRIGHTNESS_STEP -> adjustBrightnessStep(it.getIntExtra(IntentKeys.BRIGHTNESS_STEP, brightnessStep))
                 ActionKeys.REDUCE_BRIGHTNESS -> {
                     adjustBrightness(brightnessAlpha + brightnessStep)
+                    // TODO: Allow communication from OverlayService to MainActivity
 //                    sendBrightnessToActivity()
                 }
                 ActionKeys.INCREASE_BRIGHTNESS -> {
