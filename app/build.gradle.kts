@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.elfefe.lowerbrightness"
+    namespace = "com.elfefe.screenbrightness"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.elfefe.lowerbrightness"
+        applicationId = "com.elfefe.screenbrightness"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -20,6 +20,13 @@ android {
 
     buildTypes {
         release {
+            isMinifyEnabled = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        debug {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -49,6 +56,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.play.services.ads)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

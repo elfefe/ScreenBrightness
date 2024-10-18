@@ -1,12 +1,9 @@
-package com.elfefe.lowerbrightness
+package com.elfefe.screenbrightness
 
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.os.Handler
-import android.os.Looper
-import android.os.Message
 import java.util.*
 
 object AlarmScheduler {
@@ -51,19 +48,7 @@ object AlarmScheduler {
             alarmManager.setExact(
                 AlarmManager.RTC_WAKEUP,
                 calendar.timeInMillis,
-                "",
-                object: AlarmManager.OnAlarmListener {
-                    override fun onAlarm() {
-                        println("Alarm received: $action")
-                    }
-                },
-                Handler(Looper.getMainLooper(), object: Handler.Callback {
-                    override fun handleMessage(msg: Message): Boolean {
-                        println("Alarm scheduled: $action at ${calendar.time}")
-                        return true
-                    }
-
-                })
+                pendingIntent
             )
         }
     }

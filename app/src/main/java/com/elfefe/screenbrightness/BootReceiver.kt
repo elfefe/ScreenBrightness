@@ -1,4 +1,4 @@
-package com.elfefe.lowerbrightness
+package com.elfefe.screenbrightness
 
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -9,7 +9,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
             // Retrieve saved schedule
-            val sharedPreferences = context.getSharedPreferences("SchedulePrefs", Context.MODE_PRIVATE)
+            val sharedPreferences = context.getSharedPreferences(SharedPreferenceKeys.SCHEDULE_PREFS, Context.MODE_PRIVATE)
             val isScheduled = sharedPreferences.getBoolean("isScheduled", false)
 
             if (isScheduled) {
