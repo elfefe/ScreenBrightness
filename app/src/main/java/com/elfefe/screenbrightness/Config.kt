@@ -1,4 +1,4 @@
-package com.elfefe.lowerbrightness
+package com.elfefe.screenbrightness
 
 import androidx.compose.runtime.Composable
 

@@ -1,4 +1,4 @@
-package com.elfefe.lowerbrightness
+package com.elfefe.screenbrightness
 
 data class Schedule(
     val hour: Int,

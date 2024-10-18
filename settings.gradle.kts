@@ -19,6 +19,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Lower Brightness"
+rootProject.name = "Screen Brightness"
 include(":app")
  

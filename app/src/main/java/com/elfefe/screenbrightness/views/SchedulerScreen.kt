@@ -1,4 +1,4 @@
-package com.elfefe.lowerbrightness
+package com.elfefe.screenbrightness.views
 
 import android.app.TimePickerDialog
 import android.content.Context
@@ -10,14 +10,17 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.elfefe.screenbrightness.AlarmScheduler
+import com.elfefe.screenbrightness.MainActivity
+import com.elfefe.screenbrightness.SharedPreferenceKeys
 import java.util.*
 
 @Composable
-fun ScheduleScreen(context: Context) {
+fun MainActivity.ScheduleScreen() {
     var time by remember { mutableStateOf(Calendar.getInstance()) }
     var selectedDays by remember { mutableStateOf(setOf<Int>()) }
     var isScheduled by remember { mutableStateOf(false) }
-    val sharedPreferences = context.getSharedPreferences("SchedulePrefs", Context.MODE_PRIVATE)
+    val sharedPreferences = getSharedPreferences(SharedPreferenceKeys.SCHEDULE_PREFS, Context.MODE_PRIVATE)
 
     val daysOfWeek = listOf(
         Calendar.MONDAY to "Monday",
@@ -31,19 +34,19 @@ fun ScheduleScreen(context: Context) {
 
     // Load saved schedule
     LaunchedEffect(Unit) {
-        val hour = sharedPreferences.getInt("hour", time.get(Calendar.HOUR_OF_DAY))
-        val minute = sharedPreferences.getInt("minute", time.get(Calendar.MINUTE))
+        val hour = sharedPreferences.getInt(SharedPreferenceKeys.HOUR, time.get(Calendar.HOUR_OF_DAY))
+        val minute = sharedPreferences.getInt(SharedPreferenceKeys.MINUTE, time.get(Calendar.MINUTE))
         val daysSet =
-            sharedPreferences.getStringSet("daysOfWeek", emptySet())?.map { it.toInt() }?.toSet()
+            sharedPreferences.getStringSet(SharedPreferenceKeys.DAYS_OF_WEEK, emptySet())?.map { it.toInt() }?.toSet()
                 ?: emptySet()
-        isScheduled = sharedPreferences.getBoolean("isScheduled", false)
+        isScheduled = sharedPreferences.getBoolean(SharedPreferenceKeys.IS_SCHEDULED, false)
         time.set(Calendar.HOUR_OF_DAY, hour)
         time.set(Calendar.MINUTE, minute)
         selectedDays = daysSet
     }
 
 
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column {
         Text(text = "Set Overlay Schedule", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -51,7 +54,7 @@ fun ScheduleScreen(context: Context) {
         Button(onClick = {
             val hour = time.get(Calendar.HOUR_OF_DAY)
             val minute = time.get(Calendar.MINUTE)
-            TimePickerDialog(context, { _, selectedHour, selectedMinute ->
+            TimePickerDialog(this@ScheduleScreen, { _, selectedHour, selectedMinute ->
                 time.set(Calendar.HOUR_OF_DAY, selectedHour)
                 time.set(Calendar.MINUTE, selectedMinute)
             }, hour, minute, true).show()
@@ -110,17 +113,17 @@ fun ScheduleScreen(context: Context) {
                 if (isScheduled) {
                     // Cancel existing schedule
                     AlarmScheduler.cancelScheduledOverlay(
-                        context,
+                        this@ScheduleScreen,
                         selectedDays,
                         enable = false
                     )
 
                     // Clear saved schedule
-                    sharedPreferences.edit().clear().apply()
+                    sharedPreferences.edit().putBoolean(SharedPreferenceKeys.IS_SCHEDULED, false).apply()
                 } else {
                     // Schedule overlay start and stop
                     AlarmScheduler.scheduleOverlay(
-                        context = context,
+                        context = this@ScheduleScreen,
                         hour = time.get(Calendar.HOUR_OF_DAY),
                         minute = time.get(Calendar.MINUTE),
                         daysOfWeek = selectedDays,
@@ -129,13 +132,13 @@ fun ScheduleScreen(context: Context) {
 
                     // Save schedule
                     sharedPreferences.edit().apply {
-                        putInt("hour", time.get(Calendar.HOUR_OF_DAY))
-                        putInt("minute", time.get(Calendar.MINUTE))
+                        putInt(SharedPreferenceKeys.HOUR, time.get(Calendar.HOUR_OF_DAY))
+                        putInt(SharedPreferenceKeys.MINUTE, time.get(Calendar.MINUTE))
                         putStringSet(
-                            "daysOfWeek",
+                            SharedPreferenceKeys.DAYS_OF_WEEK,
                             selectedDays.map { it.toString() }.toSet()
                         )
-                        putBoolean("isScheduled", true)
+                        putBoolean(SharedPreferenceKeys.IS_SCHEDULED, true)
                         apply()
                     }
                 }

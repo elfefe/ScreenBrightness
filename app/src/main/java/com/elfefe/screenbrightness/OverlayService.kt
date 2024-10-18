@@ -1,33 +1,38 @@
-package com.elfefe.lowerbrightness
+package com.elfefe.screenbrightness
 
 import android.app.*
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
+import android.graphics.BlendMode
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.os.Build
 import android.os.IBinder
 import android.view.*
-import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 
 class OverlayService : Service() {
 
     lateinit var sharedPreferences: SharedPreferences
     private var dimView: View? = null
     private var windowManager: WindowManager? = null
-    private val CHANNEL_ID = "OverlayServiceChannel"
     private var isOverlayEnabled = false
     private var brightnessAlpha = 150 // Default brightness (0-255)
     private var brightnessStep = 51 // Default brightness (0-255)
+    private var color = com.elfefe.screenbrightness.Color.fromColor(androidx.compose.ui.graphics.Color.Black) // Default color
 
     override fun onCreate() {
         super.onCreate()
         sharedPreferences = getSharedPreferences(SharedPreferenceKeys.APP_PREFS, MODE_PRIVATE)
+
+        brightnessAlpha = sharedPreferences.getInt(SharedPreferenceKeys.CURRENT_BRIGHTNESS, brightnessAlpha)
+        brightnessStep = sharedPreferences.getInt(SharedPreferenceKeys.CURRENT_BRIGHTNESS_STEP, brightnessStep)
+        color = com.elfefe.screenbrightness.Color.fromLong(
+            sharedPreferences.getLong(SharedPreferenceKeys.CURRENT_COLOR, color.toLong()))
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -47,6 +52,8 @@ class OverlayService : Service() {
     private fun handleIntentActions(intent: Intent?) {
         intent?.let {
             when (it.action) {
+                ActionKeys.ACTION_START_OVERLAY -> showOverlay()
+                ActionKeys.ACTION_STOP_OVERLAY -> hideOverlay()
                 ActionKeys.TOGGLE_OVERLAY -> toggleOverlay()
                 ActionKeys.ADJUST_BRIGHTNESS -> adjustBrightness(it.getIntExtra(IntentKeys.BRIGHTNESS_LEVEL, brightnessAlpha))
                 ActionKeys.ADJUST_BRIGHTNESS_STEP -> adjustBrightnessStep(it.getIntExtra(IntentKeys.BRIGHTNESS_STEP, brightnessStep))
@@ -59,6 +66,7 @@ class OverlayService : Service() {
                     adjustBrightness(brightnessAlpha - brightnessStep)
 //                    sendBrightnessToActivity()
                 }
+                ActionKeys.ADJUST_COLOR -> adjustColor(it.getLongExtra(IntentKeys.UPDATE_COLOR, color.toLong()))
                 "OPEN_APP" -> {
                     val openAppIntent = Intent(this, MainActivity::class.java).apply {
                         flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -67,6 +75,12 @@ class OverlayService : Service() {
                 }
             }
         }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        removeOverlay()
+        createOverlay()
     }
 
     private fun sendBrightnessToActivity() {
@@ -79,11 +93,35 @@ class OverlayService : Service() {
     }
 
     private fun createOverlay() {
+        if (dimView != null) removeOverlay()
+
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
 
         dimView = View(this).apply {
-            setBackgroundColor(Color.argb(brightnessAlpha, 0, 0, 0))
             setTheme(android.R.style.Theme_Holo_NoActionBar_Fullscreen)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                backgroundTintBlendMode = BlendMode.HARD_LIGHT
+                setLayerType(View.LAYER_TYPE_SOFTWARE, Paint().apply {
+                    blendMode = BlendMode.HARD_LIGHT
+                    xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC)
+                })
+            }
+        }
+
+        setOverlayColor()
+
+        dimView?.setOnApplyWindowInsetsListener { _, insets ->
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R)
+                return@setOnApplyWindowInsetsListener insets
+
+            val params = dimView?.layoutParams
+            params?.height = windowManager?.maximumWindowMetrics?.bounds?.height()?.let {
+                it + insets.systemWindowInsetTop
+            } ?: WindowManager.LayoutParams.MATCH_PARENT
+            dimView?.layoutParams = params
+            dimView?.invalidate()
+            dimView?.requestLayout()
+            insets
         }
 
         val params = WindowManager.LayoutParams(
@@ -91,10 +129,7 @@ class OverlayService : Service() {
                 windowManager?.maximumWindowMetrics?.bounds?.width() ?:
                 WindowManager.LayoutParams.MATCH_PARENT
             else WindowManager.LayoutParams.MATCH_PARENT,
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-                windowManager?.maximumWindowMetrics?.bounds?.height()?.let { it + 512 } ?:
-                WindowManager.LayoutParams.MATCH_PARENT
-            else WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
             windowType(),
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
@@ -104,6 +139,7 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
+        params.dimAmount = 1f
 
         windowManager?.addView(dimView, params)
     }
@@ -119,7 +155,7 @@ class OverlayService : Service() {
         alpha.coerceAtLeast(0).coerceAtMost(255).let {
             sharedPreferences.edit().putInt(SharedPreferenceKeys.CURRENT_BRIGHTNESS, it).apply()
             brightnessAlpha = it
-            dimView?.setBackgroundColor(Color.argb(it, 0, 0, 0))
+            setOverlayColor()
         }
     }
 
@@ -130,11 +166,34 @@ class OverlayService : Service() {
         }
     }
 
+    private fun adjustColor(color: Long) {
+        sharedPreferences.edit().putLong(SharedPreferenceKeys.CURRENT_COLOR, color).apply()
+        this.color = com.elfefe.screenbrightness.Color.fromLong(color)
+        setOverlayColor()
+    }
+
+    private fun setOverlayColor() {
+        dimView?.setBackgroundColor(Color.argb(
+            brightnessAlpha,
+            color.red,
+            color.green,
+            color.blue
+        ))
+    }
+
     private fun toggleOverlay() {
-        if (isOverlayEnabled)
-            removeOverlay()
-        else createOverlay()
-        isOverlayEnabled = !isOverlayEnabled
+        if (dimView != null)
+            hideOverlay()
+        else showOverlay()
+    }
+
+    private fun showOverlay() {
+        createOverlay()
+        updateNotification()
+    }
+
+    private fun hideOverlay() {
+        removeOverlay()
         updateNotification()
     }
 
@@ -164,16 +223,13 @@ class OverlayService : Service() {
         }
         val increaseBrightnessPendingIntent = PendingIntent.getService(this, 0, increaseBrightnessIntent, PendingIntent.FLAG_MUTABLE)
 
-        // Create notification
-        createNotificationChannel()
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_lower_brightness_monochrome)
             .setProgress(255, 255 - brightnessAlpha, false)
             .addAction(R.drawable.baseline_arrow_left_24, "Reduce", reduceBrightnessPendingIntent)
             .addAction(R.drawable.baseline_arrow_right_24, "Increase", increaseBrightnessPendingIntent)
             .addAction(
-                if (isOverlayEnabled) R.drawable.baseline_toggle_off_24
+                if (dimView != null) R.drawable.baseline_toggle_off_24
                 else R.drawable.baseline_toggle_on_24, "Toggle Overlay", togglePendingIntent)
             .setContentIntent(brightnessPendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -181,18 +237,13 @@ class OverlayService : Service() {
             .build()
     }
 
-
     private fun windowType(): Int =
         WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
 
     private fun pendingIntentFlags(): Int =
         PendingIntent.FLAG_IMMUTABLE
 
-    private fun createNotificationChannel() {
-        val channel = NotificationChannel(
-            CHANNEL_ID, "Overlay Service Channel", NotificationManager.IMPORTANCE_LOW
-        )
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(channel)
+    companion object {
+        const val CHANNEL_ID = "OverlayServiceChannel"
     }
 }

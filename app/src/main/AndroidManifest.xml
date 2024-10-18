@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Permission to draw overlays -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -10,9 +11,14 @@
     <uses-permission
         android:name="android.permission.SCHEDULE_EXACT_ALARM"
         tools:ignore="ProtectedPermissions"
-        android:maxSdkVersion="32"/>
+        android:maxSdkVersion="32"
+    />
     <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission
+        android:name="com.google.android.gms.permission.AD_ID"
+        android:minSdkVersion="32"
+    />
 
 
 
@@ -26,12 +32,16 @@
         android:roundIcon="@mipmap/ic_lower_brightness"
         android:supportsRtl="true"
         android:theme="@style/Theme.LowerBrightness"
-        tools:targetApi="31">
+        android:orientation="vertical"
+        android:hardwareAccelerated="true">
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-9774733986813136~6923651596"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.LowerBrightness">
+            android:theme="@style/Theme.LowerBrightness"
+            android:hardwareAccelerated="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -44,15 +54,15 @@
             android:foregroundServiceType="specialUse"
             android:exported="true" />
 
-        <!--<receiver android:name=".AlarmReceiver"
-            android:exported="true" />-->
+        <receiver android:name=".AlarmReceiver"
+            android:exported="true" />
 
-        <!--<receiver android:name=".BootReceiver"
+        <receiver android:name=".BootReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
-        </receiver>-->
+        </receiver>
 
     </application>
 
