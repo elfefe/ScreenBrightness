@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import com.android.billingclient.api.BillingClient
+import com.android.billingclient.api.PurchasesUpdatedListener
 import com.elfefe.screenbrightness.OverlayService.Companion.CHANNEL_ID
 import com.elfefe.screenbrightness.ui.theme.LowerBrightnessTheme
 import com.elfefe.screenbrightness.views.InformationsPopup
@@ -42,9 +44,10 @@ import com.elfefe.screenbrightness.views.MainScreen
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
 
-class MainActivity : ComponentActivity() {
+class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
     lateinit var sharedPreferences: SharedPreferences
 
+    var isOverlayEnabled = mutableStateOf(false)
     var brightnessAlpha = mutableStateOf(150) // Default brightness
     var brightnessStep = mutableStateOf(51) // Default brightness step
     var color = mutableStateOf(com.elfefe.screenbrightness.Color.fromColor(Color.Black)) // Default brightness step
@@ -62,6 +65,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    private val purchasesUpdatedListener =
+        PurchasesUpdatedListener { billingResult, purchases ->
+            // To be implemented in a later section.
+        }
+
+    private lateinit var billingClient: BillingClient
 
     fun askPermissions() {
         val permissions = mutableListOf(
@@ -106,7 +116,8 @@ class MainActivity : ComponentActivity() {
         val permission = android.Manifest.permission.POST_NOTIFICATIONS
         if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED ||
             shouldShowRequestPermissionRationale(permission)) {
-            Toast.makeText(this, "Please enable notification permission", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this,
+                resString(R.string.please_enable_notification_permission), Toast.LENGTH_SHORT).show()
             startActivity(Intent().apply {
                 action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
                 putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
@@ -120,7 +131,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
-        println("New intent received ${intent}")
     }
 
     @OptIn(ExperimentalFoundationApi::class, ExperimentalStdlibApi::class)
@@ -130,6 +140,12 @@ class MainActivity : ComponentActivity() {
         askPermissions()
 
         createNotificationChannel()
+
+        billingClient = BillingClient.newBuilder(this)
+            .enablePendingPurchases()
+            .setListener(purchasesUpdatedListener)
+            // Configure other settings.
+            .build()
 
         enableEdgeToEdge()
 
@@ -157,6 +173,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        sharedPreferences.registerOnSharedPreferenceChangeListener(this)
         /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             registerReceiver(brightnessReceiver, IntentFilter(IntentKeys.UPDATE_BRIGHTNESS), RECEIVER_EXPORTED)
         else registerReceiver(brightnessReceiver, IntentFilter(IntentKeys.UPDATE_BRIGHTNESS))*/
@@ -179,7 +196,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
+        sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
         /*unregisterReceiver(brightnessReceiver)*/
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopService(Intent(this, OverlayService::class.java))
     }
 
     private fun createNotificationChannel() {
@@ -214,55 +237,14 @@ class MainActivity : ComponentActivity() {
         }
         ContextCompat.startForegroundService(this, adjustIntent)
     }
-}
 
-@Composable
-fun BrightnessScreen(
-    initialBrightness: Int, onBrightnessChange: (Int) -> Unit,
-    initialBrighnessStep: Int, onBrightnessStepChange: (Int) -> Unit
-) {
-    var brightness by remember { mutableStateOf(initialBrightness) }
-    var brightnessStep by remember { mutableStateOf(initialBrighnessStep) }
-
-    Column(
-        verticalArrangement = Arrangement.Center
+    override fun onSharedPreferenceChanged(
+        sharedPreferences: SharedPreferences?,
+        key: String?
     ) {
-        Text(text = "Screen brightness", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-        Slider(
-            value = brightness.toFloat(),
-            onValueChange = {
-                brightness = it.toInt()
-                onBrightnessChange(255 - brightness)
-            },
-            valueRange = 0f..255f
-        )
-        Spacer(modifier = Modifier.height(24.dp))
-
-        Text(text = "Screen brightness step ", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Slider(
-                value = brightnessStep.toFloat(),
-                onValueChange = {
-                    brightnessStep = it.toInt()
-                    onBrightnessStepChange(brightnessStep)
-                },
-                valueRange = 1f..85f,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Row(
-                modifier = Modifier.width(48.dp),
-                horizontalArrangement = Arrangement.Center
-            ) {
-                Text(text = "$brightnessStep", style = MaterialTheme.typography.bodyLarge)
-            }
+        when (key) {
+            SharedPreferenceKeys.OVERLAY_ENABLED -> isOverlayEnabled.value = sharedPreferences
+                ?.getBoolean(SharedPreferenceKeys.OVERLAY_ENABLED, false) == true
         }
     }
 }

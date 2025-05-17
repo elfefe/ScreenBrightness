@@ -4,6 +4,8 @@ object SharedPreferenceKeys {
     const val APP_PREFS = "AppPrefs"
     const val SCHEDULE_PREFS = "SchedulePrefs"
 
+    const val OVERLAY_ENABLED = "OVERLAY_ENABLED"
+
     const val CURRENT_BRIGHTNESS = "CURRENT_BRIGHTNESS"
     const val CURRENT_BRIGHTNESS_STEP = "CURRENT_BRIGHTNESS_STEP"
     const val CURRENT_SCHEDULE = "CURRENT_SCHEDULE"

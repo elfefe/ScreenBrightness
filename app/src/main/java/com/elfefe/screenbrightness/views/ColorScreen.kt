@@ -1,8 +1,12 @@
 package com.elfefe.screenbrightness.views
 
 import android.graphics.Bitmap
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -16,8 +20,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,10 +33,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -39,10 +49,15 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.elfefe.screenbrightness.MainActivity
+import com.elfefe.screenbrightness.R
 import com.elfefe.screenbrightness.SpecialColor
+import com.elfefe.screenbrightness.resString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -62,42 +77,46 @@ fun MainActivity.ColorScreen() {
             listOf(
                 SpecialColor(
                     Color(0xFFF5F5DC),
-                    "Beige",
-                    "Softer than pure white, reduce glare while maintaining readability."
+                    resString(R.string.color_beige),
+                    resString(R.string.color_beige_description)
                 ),
                 SpecialColor(
                     Color(0xFF2E2E2E),
-                    "Dark Gray",
-                    "Ideal for low-light environments, reducing the amount of light emitted by the screen."
+                    resString(R.string.color_dark_gray),
+                    resString(R.string.color_dark_gray_description)
                 ),
                 SpecialColor(
                     Color(0xFFFFE4B5),
-                    "Warm Tone",
-                    "Warmer hue can mitigate the effects of blue light, which can disrupt sleep patterns and cause eye strain."
+                    resString(R.string.color_warm_tone),
+                    resString(R.string.color_warm_tone_description)
                 ),
                 SpecialColor(
                     Color(0xFFB0E0E6),
-                    "Cool Tone",
-                    "Powder blue is less harsh on the eyes compared to highly saturated colors."
+                    resString(R.string.color_cool_tone),
+                    resString(R.string.color_cool_tone_description)
                 ),
                 SpecialColor(
                     Color(0xFF90EE90),
-                    "Soft Green",
-                    "Green is often considered restful for the eyes."
+                    resString(R.string.color_soft_green),
+                    resString(R.string.color_soft_green_description)
                 ),
                 SpecialColor(
                     Color(0xFF000000),
-                    "Pure Black",
-                    "Extreme contrasts can cause eye fatigue; opt for Dark Gray instead."
+                    resString(R.string.color_pure_black),
+                    resString(R.string.color_pure_black_description)
                 ),
                 SpecialColor(
                     Color(0xFFFFFFFF),
-                    "Pure White",
-                    "Extreme contrasts can cause eye fatigue; opt for Beige instead."
+                    resString(R.string.color_pure_white),
+                    resString(R.string.color_pure_white_description)
                 ),
             )
         )
     }
+
+    var showColors by remember { mutableStateOf(true) }
+    val buttonColorsRotation by animateFloatAsState(targetValue = if (showColors) 180f else 0f)
+    val spaceColors by animateDpAsState(targetValue = if (showColors) 32.dp else 0.dp)
 
     LaunchedEffect(updateColor) {
         adjustColor(color)
@@ -109,58 +128,94 @@ fun MainActivity.ColorScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
-        Text(text = "Overlay color", style = MaterialTheme.typography.titleLarge)
-        Spacer(modifier = Modifier.height(32.dp))
+        AnimatedVisibility(showColors) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
 
-        ColorWheel(currentColor = color.toColor()) {
-            color = com.elfefe.screenbrightness.Color.fromColor(color.luminance, it)
-            updateColor = color.hashCode()
-        }
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Canvas(
-            modifier = Modifier
-                .onGloballyPositioned {
-                    luminancePickerWidth = it.size.width
-                }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures { change, dragAmount ->
-                        color = color.apply { luminance = change.position.x / luminancePickerWidth.toFloat() }
-                        updateColor = color.hashCode()
-                    }
-                }
-                .pointerInput(Unit) {
-                    detectTapGestures { offset ->
-                        color = color.apply { luminance = offset.x / luminancePickerWidth.toFloat() }
-                        updateColor = color.hashCode()
-                    }
-                }
-                .fillMaxWidth(0.8f)
-                .height(50.dp)
-        ) {
-            color.luminance.let {
-                drawRoundRect(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(Color.Black, color.toSaturatedColor()),
-                        startX = 16f,
-                        endX = size.width - 32f
-                    ),
-                    cornerRadius = CornerRadius(32f, 32f)
+            ) {
+                Text(
+                    text = stringResource(R.string.overlay_color),
+                    style = MaterialTheme.typography.titleMedium
                 )
+                Spacer(modifier = Modifier.height(32.dp))
 
-                drawCircle(
-                    color = Color.White,
-                    radius = 32f,
-                    center = Offset(
-                        (it * size.width).coerceIn(0f, size.width),
-                        size.height / 2f
-                    )
+                ColorWheel(currentColor = color.toColor()) {
+                    color = com.elfefe.screenbrightness.Color.fromColor(color.luminance, it)
+                    updateColor = color.hashCode()
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Canvas(
+                    modifier = Modifier
+                        .onGloballyPositioned {
+                            luminancePickerWidth = it.size.width
+                        }
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures { change, dragAmount ->
+                                color = color.apply {
+                                    luminance = change.position.x / luminancePickerWidth.toFloat()
+                                }
+                                updateColor = color.hashCode()
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectTapGestures { offset ->
+                                color =
+                                    color.apply {
+                                        luminance = offset.x / luminancePickerWidth.toFloat()
+                                    }
+                                updateColor = color.hashCode()
+                            }
+                        }
+                        .fillMaxWidth(0.8f)
+                        .height(50.dp)
+                ) {
+                    with(updateColor) {
+                        color.run {
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Black, color.toSaturatedColor()),
+                                    startX = 16f,
+                                    endX = size.width - 32f
+                                ),
+                                cornerRadius = CornerRadius(32f, 32f)
+                            )
+
+                            drawCircle(
+                                color = Color.White,
+                                radius = 32f,
+                                center = Offset(
+                                    (luminance * size.width).coerceIn(0f, size.width),
+                                    size.height / 2f
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(spaceColors))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.color_selection),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.width(32.dp))
+            IconButton({
+                showColors = !showColors
+            }) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Handle",
+                    modifier = Modifier
+                        .rotate(buttonColorsRotation)
                 )
             }
         }
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Text(text = "Color selection", style = MaterialTheme.typography.titleLarge)
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyColumn(
@@ -211,80 +266,124 @@ fun ColorWheel(
     currentColor: Color = Color.White,
     onColorSelected: (Color) -> Unit
 ) {
-    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    var density = LocalDensity.current
+    var imageBitmap: ImageBitmap? by remember { mutableStateOf(null) }
     val imageSize = with(density) { size.toPx().roundToInt() }
-    val imageBitmap = remember {
-        generateColorWheelBitmap(size = imageSize)
-    }
     val radius = imageSize / 2f
+    var cursorPosition by remember { mutableStateOf(Offset(radius, radius)) }
+    var touchModifier by remember { mutableStateOf(Modifier) }
 
-    fun pixelAtOffset(offset: Offset) {
-        val dx = offset.x - radius
-        val dy = offset.y - radius
-        val distance = sqrt(dx * dx + dy * dy)
-        if (distance <= radius) {
-            val angle = (atan2(dy, dx) * (180f / PI.toFloat()) + 360f) % 360f // 0 to 360
-            val saturation = distance / radius // 0 to 1
-            val hue = angle
-            val selectedColor = Color.hsv(hue, saturation, 1f)
-            onColorSelected(selectedColor)
-        }
-    }
+    LaunchedEffect("ColorWheel") {
+        scope.launch(Dispatchers.Default) {
+            imageBitmap =
+                generateColorWheelBitmap(size = imageSize)
 
-    var cursorPosition = colorToPosition(currentColor, radius, Offset(radius, radius))
-        ?: Offset(radius, radius)
+            fun pixelAtOffset(offset: Offset) {
+                val dx = offset.x - radius
+                val dy = offset.y - radius
+                val distance = sqrt(dx * dx + dy * dy)
+                if (distance <= radius) {
+                    val angle = (atan2(dy, dx) * (180f / PI.toFloat()) + 360f) % 360f // 0 to 360
+                    val saturation = distance / radius // 0 to 1
+                    val hue = angle
+                    val selectedColor = Color.hsv(hue, saturation, 1f)
+                    onColorSelected(selectedColor)
+                }
+            }
 
-    // Modifier to handle touch input
-    val touchModifier = Modifier.pointerInput(Unit) {
-        awaitPointerEventScope {
-            while (true) {
-                // Wait for touch down event
-                val down = awaitPointerEvent().changes.firstOrNull() ?: continue
+            var cursorPosition = colorToPosition(currentColor, radius, Offset(radius, radius))
+                ?: Offset(radius, radius)
 
-                if (down.pressed) {
-                    // Consume the down event to prevent the Pager from intercepting
-                    down.consume()
+            // Modifier to handle touch input
+            touchModifier.pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        // Wait for touch down event
+                        val down = awaitPointerEvent().changes.firstOrNull() ?: continue
 
-                    // Handle drag events
-                    do {
-                        val event = awaitPointerEvent()
-                        val change = event.changes.firstOrNull() ?: break
+                        if (down.pressed) {
+                            // Consume the down event to prevent the Pager from intercepting
+                            down.consume()
 
-                        // Calculate position relative to center
-                        pixelAtOffset(change.position)
-                        cursorPosition = change.position
+                            // Handle drag events
+                            do {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull() ?: break
 
-                        // Consume the move event
-                        change.consume()
-                    } while (event.changes.any { it.pressed })
+                                // Calculate position relative to center
+                                println("pixelAtOffset called")
+                                pixelAtOffset(change.position)
+                                cursorPosition = change.position
 
-                    // Touch released
+                                // Consume the move event
+                                change.consume()
+                            } while (event.changes.any { it.pressed })
+
+                            // Touch released
+                        }
+                    }
                 }
             }
         }
     }
 
-    Image(
-        bitmap = imageBitmap,
-        contentDescription = null,
-        modifier = Modifier
-            .drawWithContent {
-                drawContent()
-                drawCircle(
-                    color = Color.White,
-                    radius = 32f,
-                    center = cursorPosition
-                )
-            }
-            .size(size)
-            .then(touchModifier)
-            .then(modifier)
-    )
+    imageBitmap?.let {
+        Image(
+            bitmap = it,
+            contentDescription = null,
+            modifier = Modifier
+                .size(size)
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        val radius = imageSize / 2f
+                        val dx = offset.x - radius
+                        val dy = offset.y - radius
+                        val distance = sqrt(dx * dx + dy * dy)
+                        if (distance <= radius) {
+                            val angle =
+                                (atan2(dy, dx) * (180f / PI.toFloat()) + 360f) % 360f // 0 to 360
+                            val saturation = distance / radius // 0 to 1
+                            val hue = angle
+                            val selectedColor = Color.hsv(hue, saturation, 1f)
+                            onColorSelected(selectedColor)
+                            cursorPosition = offset
+                        }
+                    }
+                }
+                .pointerInput(Unit) {
+                    detectDragGestures { change, dragAmount ->
+                        val offset = change.position
+                        val radius = imageSize / 2f
+                        val dx = offset.x - radius
+                        val dy = offset.y - radius
+                        val distance = sqrt(dx * dx + dy * dy)
+                        if (distance <= radius) {
+                            val angle =
+                                (atan2(dy, dx) * (180f / PI.toFloat()) + 360f) % 360f // 0 to 360
+                            val saturation = distance / radius // 0 to 1
+                            val hue = angle
+                            val selectedColor = Color.hsv(hue, saturation, 1f)
+                            onColorSelected(selectedColor)
+                            cursorPosition = offset
+                        }
+                    }
+                }
+                .drawWithContent {
+                    drawContent()
+                    drawCircle(
+                        color = Color.White,
+                        radius = 32f,
+                        center = cursorPosition
+                    )
+                }
+                .then(modifier)
+        )
+    }
 }
 
 fun generateColorWheelBitmap(size: Int): ImageBitmap {
-    val bitmap =
-        Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val radius = size / 2f
 
     val pixels = IntArray(size * size)
@@ -297,11 +396,11 @@ fun generateColorWheelBitmap(size: Int): ImageBitmap {
                 val angle =
                     (atan2(dy, dx) * (180f / PI.toFloat()) + 360f) % 360f // Angle from 0 to 360
                 val h = angle // Hue from 0 to 360
-                val s = distance / radius // Saturation from 0 to 1
+                val s = (distance / radius).coerceIn(0f, 1f) // Saturation from 0 to 1
                 val v = 1f // Value
                 val color = Color.hsv(h, s, v).toArgb()
                 pixels[y * size + x] = color
-            } else {
+            }  else {
                 // Outside the circle, set transparent or background color
                 pixels[y * size + x] = Color.Transparent.toArgb()
             }
@@ -340,4 +439,3 @@ fun colorToPosition(
 
     return Offset(x, y)
 }
-

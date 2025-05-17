@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Luminosité d\'écran</string>
+    <string name="disable_overlay">Désactiver le filtre</string>
+    <string name="notification_brightness_step">Echelle de luminosité dans la notification</string>
+    <string name="screen_brightness">Luminosité du filtre</string>
+    <string name="monday">Lundi</string>
+    <string name="tuesday">Mardi</string>
+    <string name="wednesday">Mercredi</string>
+    <string name="thursday">Jeudi</string>
+    <string name="friday">Vendredi</string>
+    <string name="saturday">Samedi</string>
+    <string name="sunday">Dimanche</string>
+    <string name="set_overlay_schedule">Planifier l\'affichage du filtre</string>
+    <string name="select_time">Définir le temps:</string>
+    <string name="select_days">Définir les jours:</string>
+    <string name="cancel_schedule">Arréter le plannifieur</string>
+    <string name="set_schedule">Lancer le plannifieur</string>
+    <string name="color_selection">Sélectionner une couleur</string>
+    <string name="overlay_color">Couleur du filtre</string>
+    <string name="color_beige">Beige</string>
+    <string name="color_beige_description">Plus doux que le blanc pur, ils réduisent l\'éblouissement tout en préservant la lisibilité.</string>
+    <string name="color_dark_gray">Gris foncé</string>
+    <string name="color_dark_gray_description">Idéal pour les environnements à faible luminosité, il réduit la quantité de lumière émise par l\'écran.</string>
+    <string name="color_warm_tone">Ton chaud</string>
+    <string name="color_warm_tone_description">Une teinte plus chaude peut atténuer les effets de la lumière bleue, qui peut perturber le sommeil et provoquer une fatigue oculaire.</string>
+    <string name="color_cool_tone">Tons froids</string>
+    <string name="color_cool_tone_description">Le bleu poudre est moins agressif pour les yeux que les couleurs très saturées.</string>
+    <string name="color_soft_green">Vert tendre</string>
+    <string name="color_soft_green_description">Le vert est souvent considéré comme reposant pour les yeux.</string>
+    <string name="color_pure_black">Pur noir</string>
+    <string name="color_pure_black_description">Les contrastes extrêmes peuvent entraîner une fatigue oculaire ; optez plutôt pour le gris foncé.</string>
+    <string name="color_pure_white">Pur blanc</string>
+    <string name="color_pure_white_description">Les contrastes extrêmes peuvent entraîner une fatigue oculaire ; optez plutôt pour le beige.</string>
+    <string name="brightness">Luminosité</string>
+    <string name="alarm">Planificateur</string>
+    <string name="color">Couleur</string>
+    <string name="please_enable_notification_permission">Veuillez activer l\'autorisation de notification</string>
+    <string name="how_to_support_by_watching_ads">Comment soutenir en regardant des publicités</string>
+    <string name="watching_ads_helps_us_keep_the_app_free">Regarder des publicités nous aide à garder l\'application gratuite et nous permet de continuer à l\'améliorer avec de nouvelles fonctionnalités et mises à jour.</string>
+    <string name="we_appreciate_your_understanding_and_support">Nous apprécions votre compréhension et votre soutien !</string>
+</resources>

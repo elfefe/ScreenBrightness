@@ -20,9 +20,6 @@
         android:minSdkVersion="32"
     />
 
-
-
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -33,10 +30,15 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LowerBrightness"
         android:orientation="vertical"
-        android:hardwareAccelerated="true">
+        android:hardwareAccelerated="true"
+        android:name=".Application">
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-9774733986813136~6923651596"/>
+        <property
+            android:name="android.adservices.AD_SERVICES_CONFIG"
+            android:resource="@xml/gma_ad_services_config"
+            tools:replace="android:resource" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -52,10 +54,10 @@
         <service
             android:name=".OverlayService"
             android:foregroundServiceType="specialUse"
-            android:exported="true" />
+            android:exported="false" />
 
         <receiver android:name=".AlarmReceiver"
-            android:exported="true" />
+            android:exported="false" />
 
         <receiver android:name=".BootReceiver"
             android:exported="true">
@@ -63,7 +65,5 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
-
     </application>
-
 </manifest>

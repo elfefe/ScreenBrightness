@@ -7,16 +7,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredWidthIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -28,9 +25,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.elfefe.screenbrightness.R
 
 @Composable
 fun InformationsPopup() {
@@ -58,10 +57,7 @@ fun InformationsPopup() {
                         min = 300.dp,
                         max = 512.dp
                     )
-                    .heightIn(
-                        min = 256.dp,
-                        max = 512.dp
-                    ),
+                    .wrapContentHeight(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
@@ -72,16 +68,25 @@ fun InformationsPopup() {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "How to Support by Watching Ads",
-                        style = MaterialTheme.typography.titleSmall
+                        text = stringResource(R.string.how_to_support_by_watching_ads),
+                        style = MaterialTheme.typography.titleSmall,
+                        textAlign = TextAlign.Center
                     )
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("Watching ads helps us keep the app free and allows us to continue " +
-                            "improving it with new features and updates", style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        stringResource(R.string.watching_ads_helps_us_keep_the_app_free),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                    Text("We appreciate your understanding and support!", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        stringResource(R.string.we_appreciate_your_understanding_and_support),
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
                 }
             }
         }

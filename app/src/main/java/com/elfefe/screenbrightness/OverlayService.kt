@@ -14,6 +14,7 @@ import android.os.Build
 import android.os.IBinder
 import android.view.*
 import androidx.core.app.NotificationCompat
+import androidx.core.content.edit
 
 class OverlayService : Service() {
 
@@ -142,6 +143,8 @@ class OverlayService : Service() {
         params.dimAmount = 1f
 
         windowManager?.addView(dimView, params)
+
+        sharedPreferences.edit().putBoolean(SharedPreferenceKeys.OVERLAY_ENABLED, true).apply()
     }
 
     private fun removeOverlay() {
@@ -149,6 +152,8 @@ class OverlayService : Service() {
             windowManager?.removeView(it)
             dimView = null
         }
+
+        sharedPreferences.edit().putBoolean(SharedPreferenceKeys.OVERLAY_ENABLED, false).apply()
     }
 
     private fun adjustBrightness(alpha: Int) {
