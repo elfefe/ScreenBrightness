@@ -16,7 +16,7 @@ This application allows users to control their screen brightness, schedule brigh
 
 ## Visuel
 
-![Exemple](media/exemple.gif)
+<img src="media/exemple.gif" width="254">
 
 ## Technologies Used
 
