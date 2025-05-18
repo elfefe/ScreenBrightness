@@ -1,7 +1,3 @@
-Here's a comprehensive **Privacy Policy** tailored for an Android app. You can adapt the name, company, or specific data points to your needs.
-
----
-
 **Privacy Policy**
 
 **Effective Date:** 18/05/2025
