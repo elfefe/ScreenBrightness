@@ -1,7 +1,14 @@
 package com.elfefe.screenbrightness
 
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.graphics.Color
 import kotlin.math.absoluteValue
+
+val ColorSaver: Saver<com.elfefe.screenbrightness.Color, Long> = Saver(
+    save = { it.hashCode().toLong() }, // Color packs itself into a Long ARGB
+    restore = { com.elfefe.screenbrightness.Color.fromLong(it)
+    }
+)
 
 class Color(
     luminance: Float, // Between 0 and 1
@@ -75,6 +82,7 @@ class Color(
         result = 31 * result + red
         result = 31 * result + green
         result = 31 * result + blue
+        println("Color hashCode: $result")
         return result
     }
 

@@ -6,7 +6,19 @@ import android.content.Context
 import android.content.Intent
 import java.util.*
 
+/**
+ * Object responsible for scheduling and canceling alarms for starting and stopping the overlay service.
+ */
 object AlarmScheduler {
+    /**
+     * Schedules an alarm to start or stop the overlay service at a specific time on given days of the week.
+     *
+     * @param context The application context.
+     * @param hour The hour of the day to schedule the alarm (0-23).
+     * @param minute The minute of the hour to schedule the alarm (0-59).
+     * @param daysOfWeek A set of [Calendar] constants representing the days of the week for the alarm (e.g., [Calendar.MONDAY]).
+     * @param enable True to schedule an alarm to start the overlay, false to schedule an alarm to stop it.
+     */
     fun scheduleOverlay(
         context: Context,
         hour: Int,
@@ -53,6 +65,13 @@ object AlarmScheduler {
         }
     }
 
+    /**
+     * Cancels a previously scheduled alarm for starting or stopping the overlay service.
+     *
+     * @param context The application context.
+     * @param daysOfWeek A set of [Calendar] constants representing the days of the week for which to cancel the alarm.
+     * @param enable True to cancel a start overlay alarm, false to cancel a stop overlay alarm.
+     */
     fun cancelScheduledOverlay(
         context: Context,
         daysOfWeek: Set<Int>,

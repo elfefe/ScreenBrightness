@@ -1,5 +1,6 @@
 package com.elfefe.screenbrightness.views
 
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -31,9 +33,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,14 +52,17 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.elfefe.screenbrightness.MainActivity
+import com.elfefe.screenbrightness.ColorSaver
 import com.elfefe.screenbrightness.R
 import com.elfefe.screenbrightness.SpecialColor
 import com.elfefe.screenbrightness.resString
+import com.elfefe.screenbrightness.toSpecialColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -65,14 +72,156 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+/**
+ * Composable function that displays the color selection screen.
+ * Allows the user to pick a color using a color wheel and a luminance slider, or select from predefined colors.
+ *
+ * @receiver The [MainActivity] instance, providing access to its properties and methods for adjusting the overlay color.
+ */
+@Preview
 @Composable
-fun MainActivity.ColorScreen() {
-    var luminancePickerWidth by remember { mutableStateOf(0) }
-    var updateColor by remember { mutableStateOf(color.value.hashCode()) }
+fun ColorScreen(modifier: Modifier = Modifier, updateColor: com.elfefe.screenbrightness.Color = Color.Black.toSpecialColor(), onUpdateColor: (com.elfefe.screenbrightness.Color) -> Unit = {}) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    var color by remember { mutableStateOf(color.value) }
+    if (isLandscape) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .then(modifier),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.Top
+        ) {
+            WheelView(Modifier.weight(1f), updateColor, onUpdateColor)
+            Spacer(modifier = Modifier.width(16.dp))
+            ColorsView(Modifier.weight(1f), updateColor, onUpdateColor)
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Top,
+        ) {
+            WheelView(Modifier, updateColor, onUpdateColor)
+            Spacer(modifier = Modifier.height(16.dp))
+            ColorsView(Modifier, updateColor, onUpdateColor)
+        }
+    }
+}
 
-    val colorSelection by remember {
+@Composable
+fun WheelView(modifier: Modifier, updateColor: com.elfefe.screenbrightness.Color, onUpdateColor: (com.elfefe.screenbrightness.Color) -> Unit) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    var luminancePickerWidth by rememberSaveable { mutableStateOf(0) }
+
+    var showColors by rememberSaveable { mutableStateOf(true) }
+    val buttonColorsRotation by animateFloatAsState(targetValue = if (showColors) 180f else 0f, label = "")
+    val spaceColors by animateDpAsState(targetValue = if (showColors) 32.dp else 0.dp, label = "")
+
+    println("WheelView ${updateColor.hashCode()}")
+
+    Column(modifier = Modifier.then(modifier)) {
+        AnimatedVisibility(showColors, modifier = Modifier.size(512.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+
+            ) {
+                Text(
+                    text = stringResource(R.string.overlay_color),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Spacer(modifier = Modifier.height(32.dp))
+
+                ColorWheel(currentColor = updateColor.toColor()) {
+                    onUpdateColor(com.elfefe.screenbrightness.Color.fromColor(updateColor.luminance, it))
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Canvas(
+                    modifier = Modifier
+                        .onGloballyPositioned {
+                            luminancePickerWidth = it.size.width
+                        }
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures { change, dragAmount ->
+                                onUpdateColor(
+                                    com.elfefe.screenbrightness.Color.fromColor(
+                                        luminance = change.position.x / luminancePickerWidth.toFloat(),
+                                        updateColor.toColor()
+                                    )
+                                )
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectTapGestures { offset ->
+                                onUpdateColor(
+                                    com.elfefe.screenbrightness.Color.fromColor(
+                                        luminance = offset.x / luminancePickerWidth.toFloat(),
+                                        updateColor.toColor()
+                                    )
+                                )
+                            }
+                        }
+                        .fillMaxWidth(0.8f)
+                        .height(50.dp)
+                ) {
+                    with(updateColor) {
+                            drawRoundRect(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(Color.Black, toSaturatedColor()),
+                                    startX = 16f,
+                                    endX = size.width - 32f
+                                ),
+                                cornerRadius = CornerRadius(32f, 32f)
+                            )
+
+                            drawCircle(
+                                color = Color.White,
+                                radius = 32f,
+                                center = Offset(
+                                    (luminance * size.width).coerceIn(0f, size.width),
+                                    size.height / 2f
+                                )
+                            )
+                    }
+                }
+            }
+        }
+
+        if (isLandscape) return@Column
+
+        Spacer(modifier = Modifier.height(spaceColors))
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.color_selection),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Spacer(Modifier.width(32.dp))
+            IconButton({
+                showColors = !showColors
+            }) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Handle",
+                    modifier = Modifier
+                        .rotate(buttonColorsRotation)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+fun ColorsView(modifier: Modifier, updateColor: com.elfefe.screenbrightness.Color, onUpdateColor: (com.elfefe.screenbrightness.Color) -> Unit) {
+    val colorSelection by rememberSaveable {
         mutableStateOf(
             listOf(
                 SpecialColor(
@@ -114,151 +263,53 @@ fun MainActivity.ColorScreen() {
         )
     }
 
-    var showColors by remember { mutableStateOf(true) }
-    val buttonColorsRotation by animateFloatAsState(targetValue = if (showColors) 180f else 0f)
-    val spaceColors by animateDpAsState(targetValue = if (showColors) 32.dp else 0.dp)
-
-    LaunchedEffect(updateColor) {
-        adjustColor(color)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top
+    LazyColumn(
+        modifier = Modifier.then(modifier),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        AnimatedVisibility(showColors) {
-            Column(
+        items(colorSelection) {
+            Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(
-                    text = stringResource(R.string.overlay_color),
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Spacer(modifier = Modifier.height(32.dp))
-
-                ColorWheel(currentColor = color.toColor()) {
-                    color = com.elfefe.screenbrightness.Color.fromColor(color.luminance, it)
-                    updateColor = color.hashCode()
-                }
-                Spacer(modifier = Modifier.height(32.dp))
-
-                Canvas(
+                Column(
                     modifier = Modifier
-                        .onGloballyPositioned {
-                            luminancePickerWidth = it.size.width
-                        }
-                        .pointerInput(Unit) {
-                            detectHorizontalDragGestures { change, dragAmount ->
-                                color = color.apply {
-                                    luminance = change.position.x / luminancePickerWidth.toFloat()
-                                }
-                                updateColor = color.hashCode()
-                            }
-                        }
-                        .pointerInput(Unit) {
-                            detectTapGestures { offset ->
-                                color =
-                                    color.apply {
-                                        luminance = offset.x / luminancePickerWidth.toFloat()
-                                    }
-                                updateColor = color.hashCode()
-                            }
-                        }
-                        .fillMaxWidth(0.8f)
-                        .height(50.dp)
+                        .weight(1f)
+                        .align(Alignment.Top)
                 ) {
-                    with(updateColor) {
-                        color.run {
-                            drawRoundRect(
-                                brush = Brush.horizontalGradient(
-                                    colors = listOf(Color.Black, color.toSaturatedColor()),
-                                    startX = 16f,
-                                    endX = size.width - 32f
-                                ),
-                                cornerRadius = CornerRadius(32f, 32f)
-                            )
-
-                            drawCircle(
-                                color = Color.White,
-                                radius = 32f,
-                                center = Offset(
-                                    (luminance * size.width).coerceIn(0f, size.width),
-                                    size.height / 2f
-                                )
-                            )
-                        }
-                    }
+                    Text(text = it.name, style = MaterialTheme.typography.bodyLarge)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = it.description, style = MaterialTheme.typography.bodyMedium)
                 }
+                Spacer(modifier = Modifier.width(16.dp))
+
+                ElevatedButton(
+                    onClick = {
+                        onUpdateColor(it.color.toSpecialColor())
+                    },
+                    modifier = Modifier
+                        .size(64.dp)
+                        .align(Alignment.CenterVertically),
+                    shape = RoundedCornerShape(32.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = it.color)
+                ) { }
             }
         }
-        Spacer(modifier = Modifier.height(spaceColors))
 
-        Row(
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.color_selection),
-                style = MaterialTheme.typography.titleMedium
-            )
-            Spacer(Modifier.width(32.dp))
-            IconButton({
-                showColors = !showColors
-            }) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Handle",
-                    modifier = Modifier
-                        .rotate(buttonColorsRotation)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(16.dp))
-
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            items(colorSelection) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .align(Alignment.Top)
-                    ) {
-                        Text(text = it.name, style = MaterialTheme.typography.bodyLarge)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = it.description, style = MaterialTheme.typography.bodyMedium)
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    ElevatedButton(
-                        onClick = {
-                            color = com.elfefe.screenbrightness.Color.fromColor(it.color)
-                            updateColor = color.hashCode()
-                        },
-                        modifier = Modifier
-                            .size(64.dp)
-                            .align(Alignment.CenterVertically),
-                        shape = RoundedCornerShape(32.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = it.color)
-                    ) { }
-                }
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
+        item {
+            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 }
 
+/**
+ * Composable function that displays a color wheel for selecting a color.
+ *
+ * @param modifier Modifier for this composable.
+ * @param size The size of the color wheel.
+ * @param currentColor The currently selected color.
+ * @param onColorSelected Callback invoked when a new color is selected from the wheel.
+ */
 @Composable
 fun ColorWheel(
     modifier: Modifier = Modifier,
@@ -292,7 +343,7 @@ fun ColorWheel(
                 }
             }
 
-            var cursorPosition = colorToPosition(currentColor, radius, Offset(radius, radius))
+            cursorPosition = colorToPosition(currentColor, radius, Offset(radius, radius))
                 ?: Offset(radius, radius)
 
             // Modifier to handle touch input
@@ -382,6 +433,12 @@ fun ColorWheel(
     }
 }
 
+/**
+ * Generates a [Bitmap] image of a color wheel.
+ *
+ * @param size The width and height of the bitmap to generate.
+ * @return An [ImageBitmap] representing the color wheel.
+ */
 fun generateColorWheelBitmap(size: Int): ImageBitmap {
     val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val radius = size / 2f
@@ -410,6 +467,14 @@ fun generateColorWheelBitmap(size: Int): ImageBitmap {
     return bitmap.asImageBitmap()
 }
 
+/**
+ * Converts a given [Color] to its corresponding [Offset] position on a color wheel.
+ *
+ * @param color The color to convert.
+ * @param radius The radius of the color wheel.
+ * @param center The center offset of the color wheel.
+ * @return The [Offset] position of the color on the wheel, or null if the color is not on the wheel (e.g., black or white).
+ */
 fun colorToPosition(
     color: Color,
     radius: Float,

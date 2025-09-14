@@ -2,6 +2,7 @@ package com.elfefe.screenbrightness
 
 import android.app.*
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -44,12 +45,16 @@ import com.elfefe.screenbrightness.views.MainScreen
 import com.google.android.gms.ads.MobileAds
 import com.google.android.gms.ads.RequestConfiguration
 
+/**
+ * Main activity of the application.
+ * Handles permissions, UI, and communication with the OverlayService.
+ */
 class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceChangeListener {
     lateinit var sharedPreferences: SharedPreferences
 
     var isOverlayEnabled = mutableStateOf(false)
-    var brightnessAlpha = mutableStateOf(150) // Default brightness
-    var brightnessStep = mutableStateOf(51) // Default brightness step
+    var brightnessAlpha = mutableIntStateOf(150) // Default brightness
+    var brightnessStep = mutableIntStateOf(5) // Default brightness step
     var color = mutableStateOf(com.elfefe.screenbrightness.Color.fromColor(Color.Black)) // Default brightness step
 
     val requestPermission =
@@ -61,7 +66,7 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         override fun onReceive(context: Context?, intent: Intent?) {
             val action = intent?.action
             if (action == ActionKeys.ADJUST_BRIGHTNESS) {
-                brightnessAlpha.value = intent.getIntExtra(IntentKeys.BRIGHTNESS_LEVEL, brightnessAlpha.value)
+                brightnessAlpha.intValue = intent.getIntExtra(IntentKeys.BRIGHTNESS_LEVEL, brightnessAlpha.intValue)
             }
         }
     }
@@ -73,6 +78,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
 
     private lateinit var billingClient: BillingClient
 
+    /**
+     * Requests necessary permissions for the app to function correctly.
+     * This includes overlay permission, boot completed, foreground service, notifications, and exact alarm scheduling.
+     */
     fun askPermissions() {
         val permissions = mutableListOf(
             android.Manifest.permission.SYSTEM_ALERT_WINDOW,
@@ -111,6 +120,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         }
     }
 
+    /**
+     * Checks if notification permission is granted on Android Tiramisu (API 33) and above.
+     * If not granted or should show rationale, it prompts the user to enable it in settings.
+     */
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     fun checkNotificationPermission() {
         val permission = android.Manifest.permission.POST_NOTIFICATIONS
@@ -125,17 +138,29 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         }
     }
 
+    /**
+     * Checks if the app has permission to schedule exact alarms on Android S (API 31) and above.
+     * @return True if permission is granted, false otherwise.
+     */
     @RequiresApi(Build.VERSION_CODES.S)
     fun hasExactAlarmPermission(): Boolean =
         getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
+    /**
+     * Called when the activity is re-launched while at the top of the activity stack.
+     */
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
     }
 
+    /**
+     * Called when the activity is first created.
+     * Initializes permissions, notification channel, billing client, ads, shared preferences, and UI.
+     */
     @OptIn(ExperimentalFoundationApi::class, ExperimentalStdlibApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        instance = this
 
         askPermissions()
 
@@ -153,11 +178,14 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
 
         sharedPreferences = getSharedPreferences(SharedPreferenceKeys.APP_PREFS, MODE_PRIVATE)
 
-        brightnessAlpha.value = 255 - sharedPreferences.getInt(
-            SharedPreferenceKeys.CURRENT_BRIGHTNESS, brightnessStep.value
+        isOverlayEnabled.value = sharedPreferences.getBoolean(
+            SharedPreferenceKeys.OVERLAY_ENABLED, isOverlayEnabled.value
         )
-        brightnessStep.value = sharedPreferences.getInt(
-            SharedPreferenceKeys.CURRENT_BRIGHTNESS_STEP, brightnessStep.value
+        brightnessAlpha.intValue = sharedPreferences.getInt(
+            SharedPreferenceKeys.CURRENT_BRIGHTNESS, brightnessAlpha.intValue
+        )
+        brightnessStep.intValue = sharedPreferences.getInt(
+            SharedPreferenceKeys.CURRENT_BRIGHTNESS_STEP, brightnessStep.intValue
         )
         color.value = sharedPreferences.getLong(
             SharedPreferenceKeys.CURRENT_COLOR, color.value.toLong()
@@ -171,6 +199,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         }
     }
 
+    /**
+     * Called when the activity is becoming visible to the user.
+     * Registers the shared preference change listener.
+     */
     override fun onStart() {
         super.onStart()
         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
@@ -179,6 +211,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         else registerReceiver(brightnessReceiver, IntentFilter(IntentKeys.UPDATE_BRIGHTNESS))*/
     }
 
+    /**
+     * Called when the activity will start interacting with the user.
+     * Starts the OverlayService if permissions are granted.
+     */
     override fun onResume() {
         super.onResume()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
@@ -194,17 +230,29 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         }
     }
 
+    /**
+     * Called when the activity is no longer visible to the user.
+     * Unregisters the shared preference change listener.
+     */
     override fun onStop() {
         super.onStop()
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
         /*unregisterReceiver(brightnessReceiver)*/
     }
 
+    /**
+     * Called before the activity is destroyed.
+     * Stops the OverlayService.
+     */
     override fun onDestroy() {
         super.onDestroy()
         stopService(Intent(this, OverlayService::class.java))
     }
 
+    /**
+     * Creates the notification channel for the OverlayService.
+     * This is required for Android Oreo (API 26) and above.
+     */
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID, "Overlay Service Channel", NotificationManager.IMPORTANCE_HIGH
@@ -213,6 +261,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         manager.createNotificationChannel(channel)
     }
 
+    /**
+     * Sends an intent to the OverlayService to adjust the brightness.
+     * @param brightness The new brightness level (0-255).
+     */
     fun adjustBrightness(brightness: Int) {
         val adjustIntent = Intent(this, OverlayService::class.java).apply {
             action = ActionKeys.ADJUST_BRIGHTNESS
@@ -221,6 +273,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         ContextCompat.startForegroundService(this, adjustIntent)
     }
 
+    /**
+     * Sends an intent to the OverlayService to adjust the brightness step.
+     * @param step The new brightness step value.
+     */
     fun adjustBrightnessStep(step: Int) {
         val adjustIntent = Intent(this, OverlayService::class.java).apply {
             action = ActionKeys.ADJUST_BRIGHTNESS_STEP
@@ -229,7 +285,13 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         ContextCompat.startForegroundService(this, adjustIntent)
     }
 
+    /**
+     * Sends an intent to the OverlayService to adjust the overlay color.
+     * Updates the local color state.
+     * @param color The new color for the overlay.
+     */
     fun adjustColor(color: com.elfefe.screenbrightness.Color) {
+        println("adjustColor: ${this.color.value.hashCode()} to ${color.hashCode()}");
         this.color.value = color
         val adjustIntent = Intent(this, OverlayService::class.java).apply {
             action = ActionKeys.ADJUST_COLOR
@@ -238,6 +300,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         ContextCompat.startForegroundService(this, adjustIntent)
     }
 
+    /**
+     * Called when a shared preference is changed.
+     * Updates the [isOverlayEnabled] state if the relevant preference changes.
+     */
     override fun onSharedPreferenceChanged(
         sharedPreferences: SharedPreferences?,
         key: String?
@@ -246,5 +312,12 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
             SharedPreferenceKeys.OVERLAY_ENABLED -> isOverlayEnabled.value = sharedPreferences
                 ?.getBoolean(SharedPreferenceKeys.OVERLAY_ENABLED, false) == true
         }
+    }
+
+    companion object {
+        lateinit var instance: MainActivity
+
+        const val MIN_BRIGHTNESS = 0
+        const val MAX_BRIGHTNESS = 255
     }
 }

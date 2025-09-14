@@ -1,6 +1,7 @@
 package com.elfefe.screenbrightness.views
 
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -36,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +53,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColor
 import com.elfefe.screenbrightness.ActionKeys
 import com.elfefe.screenbrightness.AdsScreen
 import com.elfefe.screenbrightness.MainActivity
@@ -61,6 +64,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 
+/**
+ * Composable function for the main screen of the application.
+ * Displays a Scaffold with a TopAppBar, BottomAppBar, FloatingActionButton, and a HorizontalPager.
+ * The HorizontalPager contains different screens for controlling brightness, scheduling, and color.
+ *
+ * @receiver The [MainActivity] instance, providing access to its properties and methods.
+ */
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MainActivity.MainScreen() {
@@ -77,19 +87,24 @@ fun MainActivity.MainScreen() {
             )
         )
     }
-
     val pagerState = rememberPagerState(pageCount = { pages.size })
+
+    var isButtonHover by remember { mutableStateOf(configuration.orientation == Configuration.ORIENTATION_LANDSCAPE || pagerState.currentPage == 0) }
+    LaunchedEffect(pagerState.currentPage) {
+        isButtonHover = configuration.orientation == Configuration.ORIENTATION_PORTRAIT && pagerState.currentPage == 0
+    }
+
     val buttonSize by animateDpAsState(targetValue =
-        if (pagerState.currentPage == 0) 192.dp
+        if (isButtonHover) 192.dp
         else 64.dp, label = "buttonSize"
     )
     val buttonOffset by animateOffsetAsState(targetValue =
-        if (pagerState.currentPage == 0) Offset(x = 0f, y = -32f)
+        if (isButtonHover) Offset(x = 0f, y = -32f)
         else Offset(x = ((configuration.screenWidthDp / 2) - (buttonSize.value / 2) - 8), y = 48f),
         label = "buttonOffset"
     )
     val buttonElevation by animateDpAsState(targetValue =
-        if (pagerState.currentPage == 0) 8.dp
+        if (isButtonHover) 8.dp
         else 1.dp, label = "buttonElevation"
     )
 
@@ -226,18 +241,18 @@ fun MainActivity.MainScreen() {
                 ) {
                     when (page) {
                         0 -> BrightnessScreen(
-                            initialBrightness = brightnessAlpha.value,
+                            initialBrightness = brightnessAlpha.intValue,
                             onBrightnessChange = { newBrightness ->
                                 adjustBrightness(newBrightness)
                             },
-                            initialBrighnessStep = brightnessStep.value,
+                            initialBrighnessStep = brightnessStep.intValue,
                             onBrightnessStepChange = { step ->
                                 adjustBrightnessStep(step)
                             }
                         )
 
                         1 -> ScheduleScreen()
-                        2 -> ColorScreen()
+                        2 -> ColorScreen(updateColor = color.value) { color -> adjustColor(color) }
                     }
                 }
             }

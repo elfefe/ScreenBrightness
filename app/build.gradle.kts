@@ -7,14 +7,14 @@ plugins {
 
 android {
     namespace = "com.elfefe.screenbrightness"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.elfefe.screenbrightness"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        targetSdk = 36
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,6 +60,9 @@ dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.play.services.ads)
     implementation(libs.billing.ktx)
+    implementation("com.braintreepayments.api:drop-in:6.13.0") {
+        exclude(group = "com.braintreepayments.api", module = "three-d-secure")
+    }
     implementation(libs.integrity)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

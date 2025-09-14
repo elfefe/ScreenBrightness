@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,9 +32,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.elfefe.screenbrightness.R
 
+/**
+ * Composable function that displays an informational popup.
+ * The popup informs the user about supporting the app by watching ads.
+ * It can be dismissed by clicking on the background.
+ */
 @Composable
 fun InformationsPopup() {
-    var showPopup by remember { mutableStateOf(true) }
+    var showPopup by rememberSaveable { mutableStateOf(true) }
 
     AnimatedVisibility(
         visible = showPopup,

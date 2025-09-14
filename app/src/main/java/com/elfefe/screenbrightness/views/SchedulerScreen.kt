@@ -2,9 +2,12 @@ package com.elfefe.screenbrightness.views
 
 import android.app.TimePickerDialog
 import android.content.Context
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,7 +20,17 @@ import com.elfefe.screenbrightness.MainActivity
 import com.elfefe.screenbrightness.R
 import com.elfefe.screenbrightness.SharedPreferenceKeys
 import java.util.*
+import androidx.core.content.edit
+import com.elfefe.screenbrightness.CustomButton
+import com.elfefe.screenbrightness.SubHeader
 
+/**
+ * Composable function that displays the scheduling screen.
+ * Allows the user to schedule a time and select days of the week to automatically start/stop the overlay service.
+ *
+ * @receiver The [MainActivity] instance, providing context and access to SharedPreferences.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MainActivity.ScheduleScreen() {
     var time by remember { mutableStateOf(Calendar.getInstance()) }
@@ -53,34 +66,39 @@ fun MainActivity.ScheduleScreen() {
     }
 
 
-    Column {
-        Text(text = stringResource(R.string.select_time))
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Time Picker
-        Button(onClick = {
-            val hour = time.get(Calendar.HOUR_OF_DAY)
-            val minute = time.get(Calendar.MINUTE)
-            TimePickerDialog(this@ScheduleScreen, { _, selectedHour, selectedMinute ->
-                time.set(Calendar.HOUR_OF_DAY, selectedHour)
-                time.set(Calendar.MINUTE, selectedMinute)
-            }, hour, minute, true).show()
-        }) {
-            Text(
-                text = String.format(
-                    Locale.getDefault(),
-                    "%02d:%02d",
-                    time.get(Calendar.HOUR_OF_DAY),
-                    time.get(Calendar.MINUTE)
-                )
-            )
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        stickyHeader {
+            SubHeader(text = stringResource(R.string.select_time))
+            Spacer(modifier = Modifier.height(16.dp))
         }
+        item {
+            // Time Picker
+            CustomButton(onClick = {
+                val hour = time.get(Calendar.HOUR_OF_DAY)
+                val minute = time.get(Calendar.MINUTE)
+                TimePickerDialog(this@ScheduleScreen, { _, selectedHour, selectedMinute ->
+                    time.set(Calendar.HOUR_OF_DAY, selectedHour)
+                    time.set(Calendar.MINUTE, selectedMinute)
+                }, hour, minute, true).show()
+            }) {
+                Text(
+                    text = String.format(
+                        Locale.getDefault(),
+                        "%02d:%02d",
+                        time.get(Calendar.HOUR_OF_DAY),
+                        time.get(Calendar.MINUTE)
+                    )
+                )
+            }
 
-        Spacer(modifier = Modifier.height(24.dp))
-
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+        stickyHeader {
+            SubHeader(text = stringResource(R.string.select_days))
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         // Days of Week Selection
-        Text(text = stringResource(R.string.select_days))
-        daysOfWeek.forEach { (day, label) ->
+        items(daysOfWeek) { (day, label) ->
             val isSelected = selectedDays.contains(day)
             Row(
                 Modifier
@@ -106,59 +124,60 @@ fun MainActivity.ScheduleScreen() {
                 Text(text = label, modifier = Modifier.padding(8.dp))
             }
         }
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            // Schedule Button
-            Button(
-                contentPadding = PaddingValues(16.dp),
-                onClick = {
-                    if (isScheduled) {
-                        // Cancel existing schedule
-                        AlarmScheduler.cancelScheduledOverlay(
-                            this@ScheduleScreen,
-                            selectedDays,
-                            enable = false
-                        )
-
-                        // Clear saved schedule
-                        sharedPreferences.edit()
-                            .putBoolean(SharedPreferenceKeys.IS_SCHEDULED, false).apply()
-                    } else {
-                        // Schedule overlay start and stop
-                        AlarmScheduler.scheduleOverlay(
-                            context = this@ScheduleScreen,
-                            hour = time.get(Calendar.HOUR_OF_DAY),
-                            minute = time.get(Calendar.MINUTE),
-                            daysOfWeek = selectedDays,
-                            enable = true // Start overlay
-                        )
-
-                        // Save schedule
-                        sharedPreferences.edit().apply {
-                            putInt(SharedPreferenceKeys.HOUR, time.get(Calendar.HOUR_OF_DAY))
-                            putInt(SharedPreferenceKeys.MINUTE, time.get(Calendar.MINUTE))
-                            putStringSet(
-                                SharedPreferenceKeys.DAYS_OF_WEEK,
-                                selectedDays.map { it.toString() }.toSet()
+        item {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Schedule Button
+                Button(
+                    contentPadding = PaddingValues(16.dp),
+                    onClick = {
+                        if (isScheduled) {
+                            // Cancel existing schedule
+                            AlarmScheduler.cancelScheduledOverlay(
+                                this@ScheduleScreen,
+                                selectedDays,
+                                enable = false
                             )
-                            putBoolean(SharedPreferenceKeys.IS_SCHEDULED, true)
-                            apply()
+
+                            // Clear saved schedule
+                            sharedPreferences.edit {
+                                putBoolean(SharedPreferenceKeys.IS_SCHEDULED, false)
+                            }
+                        } else {
+                            // Schedule overlay start and stop
+                            AlarmScheduler.scheduleOverlay(
+                                context = this@ScheduleScreen,
+                                hour = time.get(Calendar.HOUR_OF_DAY),
+                                minute = time.get(Calendar.MINUTE),
+                                daysOfWeek = selectedDays,
+                                enable = true // Start overlay
+                            )
+
+                            // Save schedule
+                            sharedPreferences.edit().apply {
+                                putInt(SharedPreferenceKeys.HOUR, time.get(Calendar.HOUR_OF_DAY))
+                                putInt(SharedPreferenceKeys.MINUTE, time.get(Calendar.MINUTE))
+                                putStringSet(
+                                    SharedPreferenceKeys.DAYS_OF_WEEK,
+                                    selectedDays.map { it.toString() }.toSet()
+                                )
+                                putBoolean(SharedPreferenceKeys.IS_SCHEDULED, true)
+                                apply()
+                            }
                         }
-                    }
-                    isScheduled = !isScheduled
-                }) {
-                Text(
-                    text = if (isScheduled) stringResource(R.string.cancel_schedule) else stringResource(
-                        R.string.set_schedule
+                        isScheduled = !isScheduled
+                    }) {
+                    Text(
+                        text = if (isScheduled) stringResource(R.string.cancel_schedule) else stringResource(
+                            R.string.set_schedule
+                        )
                     )
-                )
+                }
             }
         }
     }

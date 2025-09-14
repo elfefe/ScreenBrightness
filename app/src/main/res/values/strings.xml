@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">Screen Brightness</string>
     <string name="disable_overlay">Disable Overlay</string>
-    <string name="notification_brightness_step">"Notification brightness step "</string>
+    <string name="notification_brightness_step">Slider brightness quantity</string>
     <string name="screen_brightness">Screen brightness</string>
     <string name="monday">Monday</string>
     <string name="tuesday">Tuesday</string>
@@ -38,4 +38,11 @@
     <string name="how_to_support_by_watching_ads">How to Support by Watching Ads</string>
     <string name="watching_ads_helps_us_keep_the_app_free">Watching ads helps us keep the app free and allows us to continue improving it with new features and updates</string>
     <string name="we_appreciate_your_understanding_and_support">We appreciate your understanding and support!</string>
+    <string name="forte">Strong</string>
+    <string name="notification">Notification</string>
+    <string name="legere">Light</string>
+    <string name="faible">Weak</string>
+    <string name="assombrissement_du_filtre">Filter darkness</string>
+    <string name="filter">Filter</string>
+    <string name="conseille">Advised</string>
 </resources>
