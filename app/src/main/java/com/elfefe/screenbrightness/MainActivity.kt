@@ -147,13 +147,6 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
 
     /**
-     * Called when the activity is re-launched while at the top of the activity stack.
-     */
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-    }
-
-    /**
      * Called when the activity is first created.
      * Initializes permissions, notification channel, billing client, ads, shared preferences, and UI.
      */

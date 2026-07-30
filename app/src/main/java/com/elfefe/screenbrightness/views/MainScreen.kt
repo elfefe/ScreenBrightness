@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -154,7 +152,7 @@ fun MainActivity.MainScreen() {
                             }
                         ) {
                             Icon(
-                                imageVector = Icons.Default.MoreVert,
+                                painter = painterResource(R.drawable.baseline_more_vert_24),
                                 contentDescription = "Toggle overlay"
                             )
                         }
