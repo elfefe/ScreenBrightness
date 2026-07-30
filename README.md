@@ -1,30 +1,50 @@
 # ScreenBrightness
 
-An Android application for managing screen brightness.
+An Android application that dims the screen below the system minimum, using a
+colour overlay drawn on top of everything else.
 
-## Description
-
-This application allows users to control their screen brightness, schedule brightness changes, and apply color filters.
-
-## Features
-
-*   **Brightness Control:** Adjust the screen brightness using a slider.
-*   **Scheduling:** Schedule automatic brightness changes at specific times.
-*   **Color Filters:** Apply color filters to the screen.
-*   **Overlay Service:** Uses an overlay service to apply brightness and color changes.
-*   **Ads:** Includes ad support.
-
-## Visuel
+The system brightness slider stops at a level that is still too bright in a dark
+room. This app goes further by drawing a translucent, tinted layer over the
+screen — so it can also warm the colours to cut blue light.
 
 <img src="media/exemple.gif" width="254">
 
+## Features
+
+*   **Dimming** — adjust how dark the overlay is, from a slider or from the
+    notification.
+*   **Colour filters** — pick a tint from a colour wheel, or one of the
+    presets (beige, warm, cool, soft green, dark grey).
+*   **Scheduling** — turn the overlay on and off at a chosen time, on chosen
+    days of the week.
+*   **Persistent notification** — dim, brighten or toggle the overlay without
+    opening the app.
+
+Available in English and French.
+
+## Requirements
+
+The overlay needs the **"Display over other apps"** permission
+(`SYSTEM_ALERT_WINDOW`), which Android only grants from its settings screen —
+the app opens it on first launch. Scheduling additionally needs the
+**alarms & reminders** permission on Android 12 and above.
+
+Minimum supported version is Android 8.0 (API 26).
+
 ## Building
 
-The project needs JDK 17 and an Android SDK with API 36 installed. The Gradle
+You need **JDK 17** and an Android SDK with **API 37** installed. The Gradle
 wrapper takes care of Gradle itself.
 
 ```bash
 ./gradlew assembleDebug
+```
+
+The APK lands in `app/build/outputs/apk/debug/`. To install it on a connected
+device:
+
+```bash
+./gradlew installDebug
 ```
 
 ### Firebase configuration
@@ -41,15 +61,34 @@ To obtain it:
     open the existing one.
 3.  Download `google-services.json` and place it in `app/`.
 
-Without this file the build stops on `:app:processDebugGoogleServices`.
+Without this file the build stops on `:app:processDebugGoogleServices` with
+`File google-services.json is missing`.
 
-## Technologies Used
+## Project layout
+
+Everything lives in a single `app` module.
+
+| Path | What it holds |
+|---|---|
+| `MainActivity.kt` | permissions, app entry point |
+| `OverlayService.kt` | the foreground service drawing the overlay |
+| `Color.kt` | colour model and its packed `Long` encoding |
+| `AlarmScheduler.kt`, `AlarmReceiver.kt`, `BootReceiver.kt` | scheduling |
+| `views/` | the Compose screens |
+
+`DIAGNOSTIC.md` records the current state of the project, including the parts
+that are known not to work yet.
+
+## Technologies
 
 *   Kotlin
-*   Android SDK
-*   Jetpack Compose
+*   Jetpack Compose, Material 3
 *   Firebase Crashlytics
+
+## Privacy
+
+See [privacy.md](privacy.md).
 
 ## License
 
-[License](LICENSE-2.0.txt)
+Apache License 2.0 — see [LICENSE-2.0.txt](LICENSE-2.0.txt).
