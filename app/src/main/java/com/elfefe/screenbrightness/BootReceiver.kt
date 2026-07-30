@@ -3,43 +3,46 @@ package com.elfefe.screenbrightness
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import java.util.Calendar
 
+/**
+ * Replace la programmation apres un redemarrage : Android efface toutes les
+ * alarmes au reboot.
+ *
+ * La version precedente reconstituait une heure d'arret en ajoutant **huit
+ * heures en dur** a l'heure de debut. Cette heure de fin n'existe nulle part
+ * ailleurs : l'ecran de programmation ne propose qu'une heure d'activation.
+ * La planification restauree ne correspondait donc a rien de ce que
+ * l'utilisateur avait regle. Seule l'activation est reprogrammee.
+ */
 class BootReceiver : BroadcastReceiver() {
+
     override fun onReceive(context: Context, intent: Intent?) {
-        if (intent?.action == Intent.ACTION_BOOT_COMPLETED) {
-            // Retrieve saved schedule
-            val sharedPreferences = context.getSharedPreferences(SharedPreferenceKeys.SCHEDULE_PREFS, Context.MODE_PRIVATE)
-            val isScheduled = sharedPreferences.getBoolean("isScheduled", false)
+        if (intent?.action != Intent.ACTION_BOOT_COMPLETED) return
 
-            if (isScheduled) {
-                val hour = sharedPreferences.getInt("hour", 22)
-                val minute = sharedPreferences.getInt("minute", 0)
-                val daysSet = sharedPreferences.getStringSet("daysOfWeek", emptySet())?.map { it.toInt() }?.toSet() ?: emptySet()
+        val preferences = context.getSharedPreferences(
+            SharedPreferenceKeys.SCHEDULE_PREFS, Context.MODE_PRIVATE
+        )
+        if (!preferences.getBoolean(SharedPreferenceKeys.IS_SCHEDULED, false)) return
 
-                // Reschedule overlay start and stop
-                AlarmScheduler.scheduleOverlay(
-                    context = context,
-                    hour = hour,
-                    minute = minute,
-                    daysOfWeek = daysSet,
-                    enable = true // Start overlay
-                )
+        val heure = preferences.getInt(SharedPreferenceKeys.HOUR, HEURE_PAR_DEFAUT)
+        val minute = preferences.getInt(SharedPreferenceKeys.MINUTE, 0)
+        val jours = preferences.getStringSet(SharedPreferenceKeys.DAYS_OF_WEEK, emptySet())
+            ?.mapNotNull { it.toIntOrNull() }
+            ?.toSet()
+            .orEmpty()
 
-                val stopTime = Calendar.getInstance().apply {
-                    set(Calendar.HOUR_OF_DAY, hour)
-                    set(Calendar.MINUTE, minute)
-                    add(Calendar.HOUR_OF_DAY, 8)
-                }
+        if (jours.isEmpty()) return
 
-                AlarmScheduler.scheduleOverlay(
-                    context = context,
-                    hour = stopTime.get(Calendar.HOUR_OF_DAY),
-                    minute = stopTime.get(Calendar.MINUTE),
-                    daysOfWeek = daysSet,
-                    enable = false // Stop overlay
-                )
-            }
-        }
+        AlarmScheduler.scheduleOverlay(
+            context = context,
+            hour = heure,
+            minute = minute,
+            daysOfWeek = jours,
+            enable = true
+        )
+    }
+
+    private companion object {
+        const val HEURE_PAR_DEFAUT = 22
     }
 }

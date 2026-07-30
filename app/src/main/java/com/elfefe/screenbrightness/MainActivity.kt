@@ -86,59 +86,44 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
      * This includes overlay permission, boot completed, foreground service, notifications, and exact alarm scheduling.
      */
     fun askPermissions() {
-        val permissions = mutableListOf(
-            android.Manifest.permission.SYSTEM_ALERT_WINDOW,
-            android.Manifest.permission.RECEIVE_BOOT_COMPLETED
-        ).apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P)
-                add(android.Manifest.permission.FOREGROUND_SERVICE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                add(android.Manifest.permission.FOREGROUND_SERVICE_SPECIAL_USE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                add(android.Manifest.permission.POST_NOTIFICATIONS)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-                add(android.Manifest.permission.USE_EXACT_ALARM)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
-                add(android.Manifest.permission.SCHEDULE_EXACT_ALARM)
+        // Une seule permission d'exécution est réellement demandable ici.
+        // L'ancienne version en passait six a `requestPermission.launch` dans
+        // une boucle : SYSTEM_ALERT_WINDOW, RECEIVE_BOOT_COMPLETED,
+        // FOREGROUND_SERVICE, FOREGROUND_SERVICE_SPECIAL_USE et USE_EXACT_ALARM
+        // ne sont pas des permissions d'execution — les demander ainsi n'a
+        // aucun effet. Et Android ne traite qu'une demande a la fois : les
+        // lancements successifs s'ecrasaient les uns les autres.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ActivityCompat.checkSelfPermission(
+                this,
+                android.Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermission.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
 
-        permissions.forEach { permission ->
-            if (ActivityCompat.checkSelfPermission(
-                    this,
-                    permission
-                ) != PackageManager.PERMISSION_GRANTED
-            ) requestPermission.launch(permission)
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
-            checkNotificationPermission()
-
+        // La surdimpression est la fonction meme de l'application : sans cette
+        // autorisation, rien ne s'affiche. Elle ne se donne que depuis les
+        // reglages du systeme.
         if (!Settings.canDrawOverlays(this))
             requestOverlayPermission.launch(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !hasExactAlarmPermission()) {
-            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
-            intent.data = Uri.fromParts("package", packageName, null)
-            startActivity(intent)
-        }
     }
 
     /**
-     * Checks if notification permission is granted on Android Tiramisu (API 33) and above.
-     * If not granted or should show rationale, it prompts the user to enable it in settings.
+     * Ouvre les reglages d'alarmes exactes, si l'utilisateur en a besoin.
+     *
+     * Appelee uniquement au moment de programmer un horaire. L'ancienne version
+     * lancait cet ecran depuis `onCreate` : l'utilisateur etait expedie dans les
+     * reglages du systeme des l'ouverture de l'application, sans avoir rien
+     * demande, et a chaque lancement.
      */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    fun checkNotificationPermission() {
-        val permission = android.Manifest.permission.POST_NOTIFICATIONS
-        if (ActivityCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED ||
-            shouldShowRequestPermissionRationale(permission)) {
-            Toast.makeText(this,
-                resString(R.string.please_enable_notification_permission), Toast.LENGTH_SHORT).show()
-            startActivity(Intent().apply {
-                action = Settings.ACTION_APP_NOTIFICATION_SETTINGS
-                putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
-            })
-        }
+    fun demanderAlarmesExactes() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || hasExactAlarmPermission()) return
+        startActivity(
+            Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                data = Uri.fromParts("package", packageName, null)
+            }
+        )
     }
 
     /**
@@ -214,19 +199,22 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
      * Called when the activity will start interacting with the user.
      * Starts the OverlayService if permissions are granted.
      */
+    /**
+     * S'assure que le service tourne, sans le redemarrer.
+     *
+     * La version precedente appelait `stopService` puis `startService` a chaque
+     * retour au premier plan : la surdimpression disparaissait donc a chaque
+     * fois que l'utilisateur rouvrait l'application, avant d'etre recreee.
+     *
+     * `onDestroy` arretait par ailleurs le service, ce qui allait contre la
+     * fonction meme de l'application — le filtre s'eteignait des que l'ecran
+     * etait ferme. Cette surcharge a ete retiree : le service s'arrete quand
+     * l'utilisateur le decide, depuis la notification ou l'interrupteur.
+     */
     override fun onResume() {
         super.onResume()
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-            startService(Intent(this, OverlayService::class.java))
-            return
-        }
-
-        val permission = android.Manifest.permission.POST_NOTIFICATIONS
-        if (ActivityCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED) {
-            stopService(Intent(this, OverlayService::class.java))
-            if (Settings.canDrawOverlays(this))
-                startService(Intent(this, OverlayService::class.java))
-        }
+        if (!Settings.canDrawOverlays(this)) return
+        ContextCompat.startForegroundService(this, Intent(this, OverlayService::class.java))
     }
 
     /**
@@ -237,15 +225,6 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         super.onStop()
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
         /*unregisterReceiver(brightnessReceiver)*/
-    }
-
-    /**
-     * Called before the activity is destroyed.
-     * Stops the OverlayService.
-     */
-    override fun onDestroy() {
-        super.onDestroy()
-        stopService(Intent(this, OverlayService::class.java))
     }
 
     /**

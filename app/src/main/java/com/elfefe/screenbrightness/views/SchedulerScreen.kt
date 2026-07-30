@@ -141,11 +141,15 @@ fun MainActivity.ScheduleScreen() {
                     contentPadding = PaddingValues(16.dp),
                     onClick = {
                         if (isScheduled) {
-                            // Cancel existing schedule
+                            // enable = true, et non false : seules des alarmes
+                            // d'activation ont ete programmees. Annuler avec
+                            // enable = false visait un autre requestCode, donc
+                            // des alarmes qui n'existaient pas — et « Cancel
+                            // Schedule » ne supprimait rien.
                             AlarmScheduler.cancelScheduledOverlay(
                                 this@ScheduleScreen,
                                 selectedDays,
-                                enable = false
+                                enable = true
                             )
 
                             // Clear saved schedule
@@ -153,7 +157,11 @@ fun MainActivity.ScheduleScreen() {
                                 putBoolean(SharedPreferenceKeys.IS_SCHEDULED, false)
                             }
                         } else {
-                            // Schedule overlay start and stop
+                            // Demande l'autorisation d'alarmes exactes ici, au
+                            // moment ou elle sert, et non au demarrage de
+                            // l'application.
+                            demanderAlarmesExactes()
+
                             AlarmScheduler.scheduleOverlay(
                                 context = this@ScheduleScreen,
                                 hour = time.get(Calendar.HOUR_OF_DAY),

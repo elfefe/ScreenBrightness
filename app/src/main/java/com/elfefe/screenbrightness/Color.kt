@@ -3,26 +3,47 @@ package com.elfefe.screenbrightness
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.graphics.Color
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
+/**
+ * Sauvegarde d'une couleur a travers une recomposition.
+ *
+ * `save` utilisait auparavant `hashCode()` la ou `restore` attend l'encodage
+ * produit par [Color.toLong] : deux espaces de valeurs differents. Toute
+ * restauration passant par ce Saver rendait donc une couleur arbitraire.
+ */
 val ColorSaver: Saver<com.elfefe.screenbrightness.Color, Long> = Saver(
-    save = { it.hashCode().toLong() }, // Color packs itself into a Long ARGB
-    restore = { com.elfefe.screenbrightness.Color.fromLong(it)
-    }
+    save = { it.toLong() },
+    restore = { com.elfefe.screenbrightness.Color.fromLong(it) }
 )
+
+/**
+ * Ramene une valeur de 0 a 1 sur la grille effectivement representable une fois
+ * encodee sur un octet.
+ *
+ * Sans cela, une composante arrondie a trois decimales ne survit pas a
+ * l'aller-retour [Color.toLong] / [Color.fromLong] : un octet ne represente que
+ * des multiples de 1/255, donc 0,5 revient a 0,498. La couleur choisie par
+ * l'utilisateur derivait a chaque rechargement des preferences.
+ */
+private fun quantifier(valeur: Float): Float =
+    (valeur.coerceIn(0f, 1f) * 255).roundToInt() / 255f
 
 class Color(
     luminance: Float, // Between 0 and 1
     alpha: Float,     // Between 0 and 1
     var saturation: Saturation
 ) {
-    var luminance: Float = luminance
-        get() = field.round(2).absoluteValue
+    // Quantifiees des l'affectation, sur la meme grille que l'encodage. Les
+    // accesseurs rendent la valeur telle quelle : un arrondi a la lecture
+    // reintroduirait l'ecart que la quantification vient de supprimer.
+    var luminance: Float = quantifier(luminance.absoluteValue)
         set(value) {
-            field = value.round(2).coerceIn(0f, 1f)
+            field = quantifier(value.absoluteValue)
         }
-    var alpha: Float = alpha
+    var alpha: Float = quantifier(alpha)
         set(value) {
-            field = value.round(2).coerceIn(0f, 1f)
+            field = quantifier(value)
         }
 
     val red: Int
@@ -32,13 +53,20 @@ class Color(
     val blue: Int
         get() = (saturation.blue * 255 * luminance).toInt()
 
-    // Convert color to an Int representation (similar to android.graphics.Color)
+    /**
+     * Encode la couleur sur cinq octets : luminance, alpha, puis les trois
+     * composantes de saturation.
+     *
+     * Ce n'est pas un ARGB standard — la luminance occupe les bits 32 a 39.
+     * L'arrondi est volontaire : une troncature perdait systematiquement une
+     * fraction de composante a chaque sauvegarde.
+     */
     fun toLong(): Long {
-        val a = (alpha * 255).toLong().coerceIn(0, 255)
-        val l = (luminance * 255).toLong().coerceIn(0, 255)
-        val r = (saturation.red * 255).toLong()
-        val g = (saturation.green * 255).toLong()
-        val b = (saturation.blue * 255).toLong()
+        val a = (alpha * 255).roundToInt().coerceIn(0, 255).toLong()
+        val l = (luminance * 255).roundToInt().coerceIn(0, 255).toLong()
+        val r = (saturation.red * 255).roundToInt().coerceIn(0, 255).toLong()
+        val g = (saturation.green * 255).roundToInt().coerceIn(0, 255).toLong()
+        val b = (saturation.blue * 255).roundToInt().coerceIn(0, 255).toLong()
         return (l shl 32) or (a shl 24) or (r shl 16) or (g shl 8) or b
     }
 
@@ -82,17 +110,13 @@ class Color(
         result = 31 * result + red
         result = 31 * result + green
         result = 31 * result + blue
-        println("Color hashCode: $result")
         return result
     }
 
     class Saturation(red: Float, green: Float, blue: Float) {
-        val red: Float = red.absoluteValue
-            get() = field.round(3).coerceIn(0f, 1f)
-        val green: Float = green.absoluteValue
-            get() = field.round(3).coerceIn(0f, 1f)
-        val blue: Float = blue.absoluteValue
-            get() = field.round(3).coerceIn(0f, 1f)
+        val red: Float = quantifier(red.absoluteValue)
+        val green: Float = quantifier(green.absoluteValue)
+        val blue: Float = quantifier(blue.absoluteValue)
 
         override fun equals(other: Any?): Boolean {
             if (this === other) return true
