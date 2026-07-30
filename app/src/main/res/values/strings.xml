@@ -45,4 +45,7 @@
     <string name="assombrissement_du_filtre">Filter darkness</string>
     <string name="filter">Filter</string>
     <string name="conseille">Advised</string>
+    <string name="watch_ads">Watch an ad</string>
+    <string name="ad_not_ready">No ad is ready just yet — try again in a moment</string>
+    <string name="ad_thanks">Thank you for your support!</string>
 </resources>

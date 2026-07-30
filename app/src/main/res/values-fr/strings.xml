@@ -41,9 +41,12 @@
     <string name="we_appreciate_your_understanding_and_support">Nous apprécions votre compréhension et votre soutien !</string>
     <string name="forte">Forte</string>
     <string name="notification">Notification</string>
-    <string name="legere">Légere</string>
+    <string name="legere">Légère</string>
     <string name="faible">Faible</string>
     <string name="assombrissement_du_filtre">Assombrissement du filtre</string>
     <string name="filter">Filtre</string>
     <string name="conseille">Conseillé</string>
+    <string name="watch_ads">Regarder une publicité</string>
+    <string name="ad_not_ready">Aucune publicité n\'est prête pour l\'instant — réessayez dans un moment</string>
+    <string name="ad_thanks">Merci pour votre soutien !</string>
 </resources>

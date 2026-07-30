@@ -64,6 +64,27 @@ To obtain it:
 Without this file the build stops on `:app:processDebugGoogleServices` with
 `File google-services.json is missing`.
 
+### AdMob identifiers
+
+The app can show a **voluntary** rewarded ad, from the *Watch an ad* entry in
+the top-right menu. Nothing is ever shown on its own, and consent is collected
+first through Google's User Messaging Platform.
+
+Debug builds always use Google's public demo identifiers, so you can never
+click your own live ads while developing — that is a common way to get an
+AdMob account suspended.
+
+Release builds read the real identifiers from `local.properties`, which is not
+tracked by git:
+
+```properties
+admob.appId=ca-app-pub-XXXXXXXXXXXXXXXX~YYYYYYYYYY
+admob.rewardedId=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
+```
+
+If those keys are absent, the release build falls back to the demo identifiers
+too, so the project always compiles.
+
 ## Project layout
 
 Everything lives in a single `app` module.

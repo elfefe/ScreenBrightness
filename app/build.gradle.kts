@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     // AGP 9 embarque le support Kotlin : appliquer en plus
     // org.jetbrains.kotlin.android echoue sur un conflit d'extension.
@@ -6,6 +8,22 @@ plugins {
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
 }
+
+// Identifiants AdMob reels, lus depuis local.properties qui n'est pas suivi par
+// git. En leur absence — un clone neuf, une machine de CI — on retombe sur les
+// identifiants de demonstration publics de Google. Le projet compile donc
+// toujours, et personne ne sert d'annonces reelles par accident.
+val proprietesLocales = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+
+/** Identifiants de test publies par Google, volontairement en clair. */
+val admobAppIdTest = "ca-app-pub-3940256099942544~3347511713"
+val admobRecompenseIdTest = "ca-app-pub-3940256099942544/5224354917"
+
+val admobAppId: String = proprietesLocales.getProperty("admob.appId") ?: admobAppIdTest
+val admobRecompenseId: String =
+    proprietesLocales.getProperty("admob.rewardedId") ?: admobRecompenseIdTest
 
 android {
     namespace = "com.elfefe.screenbrightness"
@@ -31,6 +49,8 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            manifestPlaceholders["admobAppId"] = admobAppId
+            buildConfigField("String", "ADMOB_REWARDED_ID", "\"$admobRecompenseId\"")
         }
         debug {
             isMinifyEnabled = false
@@ -38,6 +58,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Le debug ne sert jamais d'annonces reelles : cliquer sur ses
+            // propres annonces en developpement fait suspendre un compte AdMob.
+            manifestPlaceholders["admobAppId"] = admobAppIdTest
+            buildConfigField("String", "ADMOB_REWARDED_ID", "\"$admobRecompenseIdTest\"")
         }
     }
     compileOptions {
@@ -51,6 +75,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -74,6 +99,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.play.services.ads)
+    // Recueil du consentement : exige par Google pour diffuser dans l'EEE.
+    implementation(libs.user.messaging.platform)
     // Construit dans MainActivity mais jamais connecte : la decision de finir
     // l'abonnement ou de retirer ce code appartient a GEN-29. La version reste
     // en 7.1.1 tant que ce choix n'est pas fait — billing 8+ change la signature

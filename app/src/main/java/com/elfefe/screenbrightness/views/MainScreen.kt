@@ -2,6 +2,7 @@ package com.elfefe.screenbrightness.views
 
 import android.content.Intent
 import android.content.res.Configuration
+import android.widget.Toast
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -53,7 +54,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColor
 import com.elfefe.screenbrightness.ActionKeys
-import com.elfefe.screenbrightness.AdsScreen
 import com.elfefe.screenbrightness.MainActivity
 import com.elfefe.screenbrightness.OverlayService
 import com.elfefe.screenbrightness.R
@@ -165,19 +165,27 @@ fun MainActivity.MainScreen() {
                                 modifier = Modifier
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             ) {
+                                // L'entree « Donate » a ete retiree : elle etait
+                                // affichee avec un clickable vide et ne faisait
+                                // rien. Elle reviendra avec le paiement, dont le
+                                // sort est traite en GEN-29.
                                 Text(
-                                    text = "Donate ❤",
+                                    text = stringResource(R.string.watch_ads),
                                     color = MaterialTheme.colorScheme.onSurface,
                                     modifier = Modifier.clickable {
-
-                                    }
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    text = "Watch ads",
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.clickable {
-
+                                        showMenu = false
+                                        val lancee = publicites.proposer {
+                                            Toast.makeText(
+                                                this@MainScreen,
+                                                resString(R.string.ad_thanks),
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                        }
+                                        if (!lancee) Toast.makeText(
+                                            this@MainScreen,
+                                            resString(R.string.ad_not_ready),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
                                     }
                                 )
                             }

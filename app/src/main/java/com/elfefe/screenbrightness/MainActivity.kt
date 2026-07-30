@@ -42,8 +42,7 @@ import com.elfefe.screenbrightness.OverlayService.Companion.CHANNEL_ID
 import com.elfefe.screenbrightness.ui.theme.LowerBrightnessTheme
 import com.elfefe.screenbrightness.views.InformationsPopup
 import com.elfefe.screenbrightness.views.MainScreen
-import com.google.android.gms.ads.MobileAds
-import com.google.android.gms.ads.RequestConfiguration
+import com.elfefe.screenbrightness.ads.PublicitesDeSoutien
 
 /**
  * Main activity of the application.
@@ -77,6 +76,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         }
 
     private lateinit var billingClient: BillingClient
+
+    /** Publicite de soutien, declenchee par l'utilisateur depuis le menu. */
+    lateinit var publicites: PublicitesDeSoutien
+        private set
 
     /**
      * Requests necessary permissions for the app to function correctly.
@@ -167,7 +170,10 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
 
         enableEdgeToEdge()
 
-        MobileAds.initialize(this) {}
+        // Le SDK publicitaire n'est plus demarre ici : PublicitesDeSoutien
+        // attend d'abord le consentement, puis initialise MobileAds lui-meme.
+        publicites = PublicitesDeSoutien(this)
+        publicites.demarrer()
 
         sharedPreferences = getSharedPreferences(SharedPreferenceKeys.APP_PREFS, MODE_PRIVATE)
 
