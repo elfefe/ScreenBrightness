@@ -11,8 +11,11 @@ import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
+import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.view.*
 import androidx.core.app.NotificationCompat
 import androidx.core.content.edit
@@ -93,17 +96,29 @@ class OverlayService : Service() {
      */
     override fun onDestroy() {
         super.onDestroy()
-        println("onDestroy")
+        // Ecrit une derniere fois la valeur en attente avant de disparaitre.
+        ecrireEnAttente()
         removeOverlay()
     }
 
+    /** Permet a [MainActivity] d'appeler le service directement une fois lie. */
+    inner class LocalBinder : Binder() {
+        val service: OverlayService get() = this@OverlayService
+    }
+
+    private val binder = LocalBinder()
+
     /**
-     * Called by the system when a client binds to the service using [bindService].
-     * This service does not support binding, so it returns null.
-     * @param intent The Intent that was used to bind to this service.
-     * @return Return an IBinder through which clients can call on to the service. Return null if clients cannot bind to the service.
+     * Le service accepte desormais d'etre lie.
+     *
+     * Sans cela, chaque changement de couleur ou de luminosite pendant qu'on
+     * fait glisser le doigt passait par `startForegroundService` : un aller-
+     * retour vers system_server, un `startForeground`, une reconstruction de la
+     * notification et une ecriture de preferences, plusieurs dizaines de fois
+     * par seconde. Lie, l'ecran appelle [mettreAJourCouleurEnDirect] /
+     * [mettreAJourLuminositeEnDirect], qui ne touchent que la vue.
      */
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder = binder
 
     /**
      * Handles actions received via intents, such as toggling the overlay, adjusting brightness, or changing color.
@@ -144,14 +159,9 @@ class OverlayService : Service() {
      */
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        println("onConfigurationChanged: $newConfig $isOverlayEnabled")
-
         if (!isOverlayEnabled) return
-
         removeOverlay()
         createOverlay()
-
-        println("onConfigurationChanged after $isOverlayEnabled")
     }
 
     /**
@@ -173,7 +183,6 @@ class OverlayService : Service() {
      * Sets the overlay color and updates shared preferences.
      */
     private fun createOverlay() {
-        println("createOverlay")
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         val dimViewIsInitialized = dimView != null
 
@@ -225,7 +234,6 @@ class OverlayService : Service() {
 
             windowManager?.addView(dimView, params)
         }
-        println("createOverlay: $windowManager $dimView")
         sharedPreferences.edit { putBoolean(SharedPreferenceKeys.OVERLAY_ENABLED, true) }
     }
 
@@ -234,7 +242,6 @@ class OverlayService : Service() {
      * Updates shared preferences to reflect that the overlay is disabled.
      */
     private fun removeOverlay() {
-        println("removeOverlay")
         dimView?.let {
             windowManager?.removeView(it)
             dimView = null
@@ -252,6 +259,52 @@ class OverlayService : Service() {
             brightnessAlpha = it
             setOverlayColor()
         }
+    }
+
+    // --- Mises a jour en direct, pour un appelant lie -----------------------
+    //
+    // Elles mettent la vue a jour immediatement mais ne persistent pas a chaque
+    // appel : l'ecriture est repoussee jusqu'a ce que le doigt s'arrete. Faire
+    // glisser produit des dizaines d'evenements par seconde, dont une seule
+    // valeur — la derniere — merite d'etre ecrite sur le disque.
+
+    private val handler = Handler(Looper.getMainLooper())
+    private val ecritureDifferee = Runnable { ecrireEnAttente() }
+    private var brightnessAEcrire: Int? = null
+    private var couleurAEcrire: Long? = null
+
+    /** @param alpha 0-255. Met a jour le filtre sans attendre. */
+    fun mettreAJourLuminositeEnDirect(alpha: Int) {
+        brightnessAlpha = alpha.coerceIn(MIN_BRIGHTNESS, MAX_BRIGHTNESS)
+        setOverlayColor()
+        brightnessAEcrire = brightnessAlpha
+        programmerEcriture()
+    }
+
+    /** @param colorLong encodage de [com.elfefe.screenbrightness.Color.toLong]. */
+    fun mettreAJourCouleurEnDirect(colorLong: Long) {
+        color = com.elfefe.screenbrightness.Color.fromLong(colorLong)
+        setOverlayColor()
+        couleurAEcrire = colorLong
+        programmerEcriture()
+    }
+
+    private fun programmerEcriture() {
+        handler.removeCallbacks(ecritureDifferee)
+        handler.postDelayed(ecritureDifferee, DELAI_ECRITURE_MS)
+    }
+
+    private fun ecrireEnAttente() {
+        handler.removeCallbacks(ecritureDifferee)
+        val b = brightnessAEcrire
+        val c = couleurAEcrire
+        if (b == null && c == null) return
+        sharedPreferences.edit {
+            b?.let { putInt(SharedPreferenceKeys.CURRENT_BRIGHTNESS, it) }
+            c?.let { putLong(SharedPreferenceKeys.CURRENT_COLOR, it) }
+        }
+        brightnessAEcrire = null
+        couleurAEcrire = null
     }
 
     /**
@@ -303,7 +356,6 @@ class OverlayService : Service() {
      * Shows the overlay by creating it and updating the notification.
      */
     private fun showOverlay() {
-        println("showOverlay")
         createOverlay()
         updateNotification()
     }
@@ -312,7 +364,6 @@ class OverlayService : Service() {
      * Hides the overlay by removing it and updating the notification.
      */
     private fun hideOverlay() {
-        println("hideOverlay")
         removeOverlay()
         sharedPreferences.edit { putBoolean(SharedPreferenceKeys.OVERLAY_ENABLED, false) }
         updateNotification()
@@ -394,5 +445,12 @@ class OverlayService : Service() {
 
         /** Identifiant de la notification permanente du service. */
         const val NOTIFICATION_ID = 1
+
+        /**
+         * Delai apres le dernier changement avant d'ecrire la valeur sur le
+         * disque. Assez court pour qu'une valeur ne soit jamais perdue,
+         * assez long pour qu'un glissement n'ecrive qu'une fois.
+         */
+        private const val DELAI_ECRITURE_MS = 400L
     }
 }

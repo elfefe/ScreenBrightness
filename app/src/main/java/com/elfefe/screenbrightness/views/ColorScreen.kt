@@ -120,8 +120,6 @@ fun WheelView(modifier: Modifier, updateColor: com.elfefe.screenbrightness.Color
     val buttonColorsRotation by animateFloatAsState(targetValue = if (showColors) 180f else 0f, label = "")
     val spaceColors by animateDpAsState(targetValue = if (showColors) 32.dp else 0.dp, label = "")
 
-    println("WheelView ${updateColor.hashCode()}")
-
     Column(modifier = Modifier.then(modifier)) {
         AnimatedVisibility(showColors, modifier = Modifier.size(512.dp)) {
             Column(
@@ -324,10 +322,12 @@ fun ColorWheel(
     var cursorPosition by remember { mutableStateOf(Offset(radius, radius)) }
     var touchModifier by remember { mutableStateOf(Modifier) }
 
-    LaunchedEffect("ColorWheel") {
+    LaunchedEffect(imageSize) {
         scope.launch(Dispatchers.Default) {
-            imageBitmap =
-                generateColorWheelBitmap(size = imageSize)
+            // La roue est identique a chaque affichage : la calculer coute une
+            // conversion HSV par pixel (des centaines de milliers), inutile de
+            // recommencer chaque fois qu'on revient sur l'ecran.
+            imageBitmap = rouEnCache(imageSize)
 
             fun pixelAtOffset(offset: Offset) {
                 val dx = offset.x - radius
@@ -362,7 +362,6 @@ fun ColorWheel(
                                 val change = event.changes.firstOrNull() ?: break
 
                                 // Calculate position relative to center
-                                println("pixelAtOffset called")
                                 pixelAtOffset(change.position)
                                 cursorPosition = change.position
 
@@ -431,6 +430,16 @@ fun ColorWheel(
         )
     }
 }
+
+// Roue mise en cache pour la duree du processus, indexee par sa taille. Une
+// seule taille est utilisee en pratique, donc une seule entree vit ici.
+private val cacheRoue = HashMap<Int, ImageBitmap>()
+
+/** Rend la roue de la taille demandee, en la calculant au plus une fois. */
+private fun rouEnCache(size: Int): ImageBitmap =
+    synchronized(cacheRoue) {
+        cacheRoue.getOrPut(size) { generateColorWheelBitmap(size) }
+    }
 
 /**
  * Generates a [Bitmap] image of a color wheel.

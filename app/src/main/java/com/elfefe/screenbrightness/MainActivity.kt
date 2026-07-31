@@ -4,6 +4,8 @@ import android.app.*
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
+import android.content.ServiceConnection
+import android.os.IBinder
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -190,9 +192,14 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
     override fun onStart() {
         super.onStart()
         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
-        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
-            registerReceiver(brightnessReceiver, IntentFilter(IntentKeys.UPDATE_BRIGHTNESS), RECEIVER_EXPORTED)
-        else registerReceiver(brightnessReceiver, IntentFilter(IntentKeys.UPDATE_BRIGHTNESS))*/
+        // Se lie au service pour pouvoir lui pousser les changements de couleur
+        // et de luminosite directement, sans un startForegroundService par
+        // evenement de glissement.
+        bindService(
+            Intent(this, OverlayService::class.java),
+            overlayConnection,
+            Context.BIND_AUTO_CREATE
+        )
     }
 
     /**
@@ -224,7 +231,11 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
     override fun onStop() {
         super.onStop()
         sharedPreferences.unregisterOnSharedPreferenceChangeListener(this)
-        /*unregisterReceiver(brightnessReceiver)*/
+        if (overlayLie) {
+            unbindService(overlayConnection)
+            overlayLie = false
+            overlayService = null
+        }
     }
 
     /**
@@ -239,11 +250,36 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
         manager.createNotificationChannel(channel)
     }
 
+    /** Service lie, quand il l'est : voir [overlayConnection]. */
+    private var overlayService: OverlayService? = null
+    private var overlayLie = false
+
+    private val overlayConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            overlayService = (service as? OverlayService.LocalBinder)?.service
+            overlayLie = overlayService != null
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            overlayService = null
+            overlayLie = false
+        }
+    }
+
     /**
-     * Sends an intent to the OverlayService to adjust the brightness.
-     * @param brightness The new brightness level (0-255).
+     * Ajuste la luminosite du filtre.
+     *
+     * Passe par le service lie quand il l'est — un simple appel de methode,
+     * pendant un glissement — et retombe sur un `startForegroundService`
+     * sinon, par exemple avant que la liaison ne soit etablie.
+     *
+     * @param brightness niveau 0-255.
      */
     fun adjustBrightness(brightness: Int) {
+        overlayService?.let {
+            it.mettreAJourLuminositeEnDirect(brightness)
+            return
+        }
         val adjustIntent = Intent(this, OverlayService::class.java).apply {
             action = ActionKeys.ADJUST_BRIGHTNESS
             putExtra(IntentKeys.BRIGHTNESS_LEVEL, brightness)
@@ -269,8 +305,11 @@ class MainActivity : ComponentActivity(), SharedPreferences.OnSharedPreferenceCh
      * @param color The new color for the overlay.
      */
     fun adjustColor(color: com.elfefe.screenbrightness.Color) {
-        println("adjustColor: ${this.color.value.hashCode()} to ${color.hashCode()}");
         this.color.value = color
+        overlayService?.let {
+            it.mettreAJourCouleurEnDirect(color.toLong())
+            return
+        }
         val adjustIntent = Intent(this, OverlayService::class.java).apply {
             action = ActionKeys.ADJUST_COLOR
             putExtra(IntentKeys.UPDATE_COLOR, color.toLong())
