@@ -1,5 +1,7 @@
 # ScreenBrightness
 
+[![CI](https://github.com/elfefe/ScreenBrightness/actions/workflows/ci.yml/badge.svg)](https://github.com/elfefe/ScreenBrightness/actions/workflows/ci.yml)
+
 An Android application that dims the screen below the system minimum, using a
 colour overlay drawn on top of everything else.
 
@@ -84,6 +86,22 @@ admob.rewardedId=ca-app-pub-XXXXXXXXXXXXXXXX/ZZZZZZZZZZ
 
 If those keys are absent, the release build falls back to the demo identifiers
 too, so the project always compiles.
+
+## Continuous integration
+
+Every push and pull request runs `assembleDebug`, `testDebugUnitTest` and
+`lint` on GitHub Actions. Reports are attached to each run as artifacts, kept
+for 14 days — including when the build fails, which is when you need them.
+
+The workflow needs a repository secret named **`GOOGLE_SERVICES_JSON`**, holding
+the base64 of `app/google-services.json`:
+
+```bash
+base64 -w0 app/google-services.json | gh secret set GOOGLE_SERVICES_JSON
+```
+
+A fork without that secret fails on the *Configuration Firebase* step, with a
+message pointing back here.
 
 ## Project layout
 
