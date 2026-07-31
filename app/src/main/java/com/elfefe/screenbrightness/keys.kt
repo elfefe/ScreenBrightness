@@ -77,4 +77,12 @@ object IntentKeys {
     const val BRIGHTNESS_STEP = "BRIGHTNESS_STEP"
     /** Intent extra key for the overlay state. */
     const val OVERLAY_STATE = "OVERLAY_STATE"
+
+    /**
+     * Jour de la semaine ([java.util.Calendar]) auquel une alarme se rapporte.
+     *
+     * Transmis pour que le recepteur puisse reconduire l'alarme d'une semaine :
+     * une alarme exacte ne se repete pas d'elle-meme.
+     */
+    const val JOUR_PROGRAMME = "JOUR_PROGRAMME"
 }

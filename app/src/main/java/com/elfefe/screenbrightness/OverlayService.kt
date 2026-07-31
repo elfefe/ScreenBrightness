@@ -3,6 +3,7 @@ package com.elfefe.screenbrightness
 import android.app.*
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.pm.ServiceInfo
 import android.content.res.Configuration
 import android.graphics.BlendMode
 import android.graphics.Color
@@ -56,12 +57,34 @@ class OverlayService : Service() {
      * @return The return value indicates what semantics the system should use for the service's current started state.
      */
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Le passage au premier plan vient en premier : Android accorde un delai
+        // tres court apres startForegroundService pour l'appeler, et le depasser
+        // fait planter le processus.
+        demarrerAuPremierPlan()
         handleIntentActions(intent)
-        println("onStartCommand: ${intent?.action} - ${intent?.flags}, flags: $flags, startId: $startId, isOverlayEnabled: $isOverlayEnabled")
-        startForeground(1, createNotification())
         if (isOverlayEnabled) showOverlay()
 
         return START_STICKY
+    }
+
+    /**
+     * Passe le service au premier plan en declarant son type.
+     *
+     * Depuis Android 14, un service `specialUse` doit annoncer son type a
+     * [startForeground], faute de quoi le systeme leve
+     * `MissingForegroundServiceTypeException` et l'application s'arrete. Le
+     * projet cible l'API 36 : la regle s'applique.
+     */
+    private fun demarrerAuPremierPlan() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(
+                NOTIFICATION_ID,
+                createNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
     }
 
     /**
@@ -301,7 +324,7 @@ class OverlayService : Service() {
      */
     private fun updateNotification() {
         val notificationManager = getSystemService(NotificationManager::class.java)
-        notificationManager.notify(1, createNotification())
+        notificationManager.notify(NOTIFICATION_ID, createNotification())
     }
 
     /**
@@ -368,5 +391,8 @@ class OverlayService : Service() {
          * The ID of the notification channel for the overlay service.
          */
         const val CHANNEL_ID = "OverlayServiceChannel"
+
+        /** Identifiant de la notification permanente du service. */
+        const val NOTIFICATION_ID = 1
     }
 }

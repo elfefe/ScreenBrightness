@@ -34,7 +34,6 @@
     <string name="brightness">Brightness</string>
     <string name="alarm">Scheduler</string>
     <string name="color">Color</string>
-    <string name="please_enable_notification_permission">Please enable notification permission</string>
     <string name="how_to_support_by_watching_ads">How to Support by Watching Ads</string>
     <string name="watching_ads_helps_us_keep_the_app_free">Watching ads helps us keep the app free and allows us to continue improving it with new features and updates</string>
     <string name="we_appreciate_your_understanding_and_support">We appreciate your understanding and support!</string>
@@ -45,4 +44,7 @@
     <string name="assombrissement_du_filtre">Filter darkness</string>
     <string name="filter">Filter</string>
     <string name="conseille">Advised</string>
+    <string name="watch_ads">Watch an ad</string>
+    <string name="ad_not_ready">No ad is ready just yet — try again in a moment</string>
+    <string name="ad_thanks">Thank you for your support!</string>
 </resources>

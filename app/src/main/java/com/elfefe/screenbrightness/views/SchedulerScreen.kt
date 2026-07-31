@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.elfefe.screenbrightness.AlarmScheduler
@@ -82,8 +83,11 @@ fun MainActivity.ScheduleScreen() {
                 }, hour, minute, true).show()
             }) {
                 Text(
+                    // Locale.getDefault() n'est pas observable : si la langue du
+                    // systeme change, la composition n'est pas relancee et l'heure
+                    // reste formatee dans l'ancienne locale.
                     text = String.format(
-                        Locale.getDefault(),
+                        LocalConfiguration.current.locales[0],
                         "%02d:%02d",
                         time.get(Calendar.HOUR_OF_DAY),
                         time.get(Calendar.MINUTE)
@@ -137,11 +141,15 @@ fun MainActivity.ScheduleScreen() {
                     contentPadding = PaddingValues(16.dp),
                     onClick = {
                         if (isScheduled) {
-                            // Cancel existing schedule
+                            // enable = true, et non false : seules des alarmes
+                            // d'activation ont ete programmees. Annuler avec
+                            // enable = false visait un autre requestCode, donc
+                            // des alarmes qui n'existaient pas — et « Cancel
+                            // Schedule » ne supprimait rien.
                             AlarmScheduler.cancelScheduledOverlay(
                                 this@ScheduleScreen,
                                 selectedDays,
-                                enable = false
+                                enable = true
                             )
 
                             // Clear saved schedule
@@ -149,7 +157,11 @@ fun MainActivity.ScheduleScreen() {
                                 putBoolean(SharedPreferenceKeys.IS_SCHEDULED, false)
                             }
                         } else {
-                            // Schedule overlay start and stop
+                            // Demande l'autorisation d'alarmes exactes ici, au
+                            // moment ou elle sert, et non au demarrage de
+                            // l'application.
+                            demanderAlarmesExactes()
+
                             AlarmScheduler.scheduleOverlay(
                                 context = this@ScheduleScreen,
                                 hour = time.get(Calendar.HOUR_OF_DAY),

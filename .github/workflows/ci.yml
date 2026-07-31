@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Une seule execution par branche : pousser deux fois de suite n'occupe pas
+# deux runners a construire la meme chose.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build, test et lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # Version figee plutot que « derniere disponible » : une mise a jour du
+      # runner ne doit pas casser le build sans qu'on ait rien change.
+      - name: JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: SDK Android
+        uses: android-actions/setup-android@v4
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # Le fichier n'est pas dans le depot — il est gitignore. Voir le README
+      # pour l'obtenir ; ici il vient du secret de depot, encode en base64.
+      - name: Configuration Firebase
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "::error::Le secret GOOGLE_SERVICES_JSON est absent. Sans lui, la tache :app:processDebugGoogleServices echoue. Voir la section « Firebase configuration » du README."
+            exit 1
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 -d > app/google-services.json
+
+      - name: Build, test et lint
+        run: ./gradlew assembleDebug testDebugUnitTest lint --no-daemon
+
+      # Toujours televerses, y compris en cas d'echec : c'est precisement quand
+      # le build echoue qu'on a besoin de lire les rapports.
+      - name: Rapports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rapports
+          path: |
+            app/build/reports/
+            app/build/test-results/
+          retention-days: 14
+          if-no-files-found: ignore
