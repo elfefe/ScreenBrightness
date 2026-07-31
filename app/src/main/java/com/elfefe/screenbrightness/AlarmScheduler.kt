@@ -53,18 +53,7 @@ object AlarmScheduler {
     ) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
-        val calendar = Calendar.getInstance().apply {
-            timeInMillis = System.currentTimeMillis()
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-            set(Calendar.DAY_OF_WEEK, day)
-
-            // L'heure est deja passee aujourd'hui : la prochaine occurrence est
-            // la semaine suivante.
-            if (before(Calendar.getInstance())) add(Calendar.WEEK_OF_YEAR, 1)
-        }
+        val calendar = prochaineOccurrence(hour, minute, day, Calendar.getInstance())
 
         val pendingIntent = intentPour(context, day, enable)
 
@@ -83,6 +72,49 @@ object AlarmScheduler {
                 pendingIntent
             )
         }
+    }
+
+    /**
+     * Date de la prochaine occurrence d'un horaire hebdomadaire.
+     *
+     * Extrait de [programmer] pour etre verifiable : c'est la partie de la
+     * planification ou une erreur ne se voit qu'une semaine plus tard.
+     *
+     * @param maintenant instant de reference, injecte plutot que lu de
+     *   l'horloge, faute de quoi le comportement dependrait du jour ou le test
+     *   s'execute.
+     * @return la premiere occurrence **strictement posterieure** a [maintenant].
+     */
+    fun prochaineOccurrence(
+        hour: Int,
+        minute: Int,
+        day: Int,
+        maintenant: Calendar
+    ): Calendar {
+        val cible = (maintenant.clone() as Calendar).apply {
+            // Force la resolution des champs a partir de l'instant : sans cela,
+            // le comportement dependrait de la maniere dont l'appelant a
+            // construit son Calendar.
+            timeInMillis = maintenant.timeInMillis
+            set(Calendar.HOUR_OF_DAY, hour)
+            set(Calendar.MINUTE, minute)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        // Le decalage est calcule, plutot que confie a set(DAY_OF_WEEK, ...).
+        // Cette methode est silencieusement ignoree quand DAY_OF_MONTH a ete
+        // renseigne plus recemment, et son resultat depend par ailleurs du
+        // premier jour de la semaine, donc de la locale.
+        val ecart = (day - cible.get(Calendar.DAY_OF_WEEK) + JOURS_SEMAINE) % JOURS_SEMAINE
+        cible.add(Calendar.DAY_OF_MONTH, ecart)
+
+        // Deja passee : la prochaine occurrence est la semaine suivante. La
+        // comparaison est stricte — une alarme fixee a l'instant present serait
+        // manquee.
+        if (!cible.after(maintenant)) cible.add(Calendar.DAY_OF_MONTH, JOURS_SEMAINE)
+
+        return cible
     }
 
     /**
@@ -130,4 +162,6 @@ object AlarmScheduler {
 
     /** Separe les codes d'arret de ceux d'activation. */
     private const val DECALAGE_ARRET = 1000
+
+    private const val JOURS_SEMAINE = 7
 }
