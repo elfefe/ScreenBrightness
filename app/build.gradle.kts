@@ -45,9 +45,10 @@ android {
         applicationId = "com.elfefe.screenbrightness"
         minSdk = 26
         targetSdk = 36
-        // La version 1.1 (code 2) est deja en production sur le Play Store :
-        // un code deja utilise est refuse au depot.
-        versionCode = 3
+        // La version 1.1 (code 2) est deja en production sur le Play Store ;
+        // le code 3 a servi a un build de test sur le Trick's Store. Le depot
+        // Play refuse tout code deja utilise, d'ou le 4.
+        versionCode = 4
         versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
