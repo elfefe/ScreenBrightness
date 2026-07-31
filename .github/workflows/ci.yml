@@ -17,21 +17,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Version figee plutot que « derniere disponible » : une mise a jour du
       # runner ne doit pas casser le build sans qu'on ait rien change.
       - name: JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
       - name: SDK Android
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       # Le fichier n'est pas dans le depot — il est gitignore. Voir le README
       # pour l'obtenir ; ici il vient du secret de depot, encode en base64.
@@ -52,7 +52,7 @@ jobs:
       # le build echoue qu'on a besoin de lire les rapports.
       - name: Rapports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rapports
           path: |
