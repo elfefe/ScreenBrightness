@@ -25,6 +25,15 @@ val admobAppId: String = proprietesLocales.getProperty("admob.appId") ?: admobAp
 val admobRecompenseId: String =
     proprietesLocales.getProperty("admob.rewardedId") ?: admobRecompenseIdTest
 
+// Signature release. Le keystore n'est pas dans le depot (`.gitignore`, *.jks)
+// et son mot de passe vient de local.properties ou de l'environnement, pour la
+// CI. Les deux sont sauvegardes dans Vault sous screenbrightness_keystore_*.
+// Perdre cette cle rendrait toute mise a jour de l'application impossible.
+val fichierKeystore = rootProject.file("keystore/release.jks")
+val motDePasseKeystore: String? =
+    proprietesLocales.getProperty("keystore.password") ?: System.getenv("KEYSTORE_PASSWORD")
+val signatureDisponible = fichierKeystore.exists() && !motDePasseKeystore.isNullOrBlank()
+
 android {
     namespace = "com.elfefe.screenbrightness"
     // Compile contre 37, mais reste cible sur 36 : monter targetSdk change le
@@ -36,14 +45,30 @@ android {
         applicationId = "com.elfefe.screenbrightness"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1"
+        // La version 1.1 (code 2) est deja en production sur le Play Store :
+        // un code deja utilise est refuse au depot.
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Declaree seulement si la cle est la : un clone sans keystore doit
+    // continuer a construire le debug sans que la configuration echoue.
+    signingConfigs {
+        if (signatureDisponible) {
+            create("release") {
+                storeFile = fichierKeystore
+                storePassword = motDePasseKeystore
+                keyAlias = "screenbrightness"
+                keyPassword = motDePasseKeystore
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
